@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Check the docs
+    url: https://oralce-guardian-ai.readthedocs.io
+    about: If you need help with your first steps with oracle-guardian-ai please check the docs.
