@@ -1,31 +1,31 @@
-name: "Publish Docs"
+# name: "Publish Docs"
 
-on:
-  # Auto-trigger this workflow on tag creation
-  push:
-    tags:
-      - 'v*.*.*'
+# on:
+#   # Auto-trigger this workflow on tag creation
+#   push:
+#     tags:
+#       - 'v*.*.*'
 
-env:
-  RTDS_MLFLOW_PROJECT: https://readthedocs.org/api/v3/projects/accelerated-data-science
-  RTDS_MLFLOW_TOKEN: ${{ secrets.RTDS_MLFLOW_TOKEN }}
+# env:
+#   RTDS_MLFLOW_PROJECT: https://readthedocs.org/api/v3/projects/accelerated-data-science
+#   RTDS_MLFLOW_TOKEN: ${{ secrets.RTDS_MLFLOW_TOKEN }}
 
-jobs:
-  build-n-publish:
-    name: Build and publish Docs 📖 to Readthedocs
-    runs-on: ubuntu-latest
+# # jobs:
+# #   build-n-publish:
+# #     name: Build and publish Docs 📖 to Readthedocs
+# #     runs-on: ubuntu-latest
 
-    steps:
-      - name: When tag 🏷️ pushed - Trigger Readthedocs build
-        if: github.event_name == 'push' && startsWith(github.ref_name, 'v')
-        run: |
-          # trigger build/publish of latest version
-          curl \
-            -X POST \
-            -H "Authorization: Token $RTDS_MLFLOW_TOKEN" $RTDS_MLFLOW_PROJECT/versions/latest/builds/
-          # add 15 minutes wait time for readthedocs see freshly created tag
-          sleep 15m
-          # trigger build/publish of v*.*.* version
-          curl \
-            -X POST \
-            -H "Authorization: Token $RTDS_MLFLOW_TOKEN" $RTDS_MLFLOW_PROJECT/versions/${{ github.ref_name }}/builds/
+# #     steps:
+# #       - name: When tag 🏷️ pushed - Trigger Readthedocs build
+# #         if: github.event_name == 'push' && startsWith(github.ref_name, 'v')
+# #         run: |
+# #           # trigger build/publish of latest version
+# #           curl \
+# #             -X POST \
+# #             -H "Authorization: Token $RTDS_MLFLOW_TOKEN" $RTDS_MLFLOW_PROJECT/versions/latest/builds/
+# #           # add 15 minutes wait time for readthedocs see freshly created tag
+# #           sleep 15m
+# #           # trigger build/publish of v*.*.* version
+# #           curl \
+# #             -X POST \
+# #             -H "Authorization: Token $RTDS_MLFLOW_TOKEN" $RTDS_MLFLOW_PROJECT/versions/${{ github.ref_name }}/builds/
