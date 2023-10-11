@@ -1,0 +1,59 @@
+[build-system]
+requires = ["flit-core >= 3.8"]
+build-backend = "flit_core.buildapi"
+
+
+[project]
+name = "oracle-guardian-ai"
+version = "1.0.0"
+description = "Oracle Guardian AI Open Source Project"
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.8"
+license = {file = "LICENSE.txt"}
+authors = [
+  {name = "Oracle Data Science"}
+]
+keywords = [
+  "Oracle Cloud Infrastructure",
+  "OCI",
+  "Fairness",
+  "Bias",
+  "Privacy",
+  "AI",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Universal Permissive License (UPL)",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+]
+dependencies = [
+    "numpy==1.22.2",
+    "pandas==1.4.1",
+    "scikit-learn==1.1.1",
+]
+
+[project.optional-dependencies]
+fairness = [
+    "aif360==0.5.0",
+    "category-encoders==2.5.0",
+    "optuna==3.2.0",
+    "plotly==5.4.0",
+]
+privacy = [
+    "scipy==1.8.1",
+    "matplotlib==3.5.3",
+]
+all-optional = [
+    "oracle-guardian-ai[fairness, privacy]",
+]
+
+[project.urls]
+"Repository" = "https://github.com/oracle/guardian-ai"
+"Documentation" = "https://oralce-guardian-ai.readthedocs.io/en/latest/index.html"
+
+[tool.flit.module]
+name = "guardian_ai"
