@@ -1,0 +1,9 @@
+autodoc
+nbsphinx
+sphinx
+sphinx_copybutton
+sphinx_code_tabs
+sphinx-autobuild
+sphinx-autorun
+sphinx-design
+furo

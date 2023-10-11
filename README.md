@@ -1,44 +1,54 @@
-*This repository acts as a template for all of Oracle’s GitHub repositories. It contains information about the guidelines for those repositories. All files and sections contained in this template are mandatory, and a GitHub app ensures alignment with these guidelines. To get started with a new repository, replace the italic paragraphs with the respective text for your project.*
+# Oracle Guardian AI Open Source Project
 
-# Project name
-
-*Describe your project's features, functionality and target audience*
+[![PyPI](https://img.shields.io/badge/pypi-v1.0.0-blue?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/oracle-guardian-ai/) [![Python](https://img.shields.io/badge/python-3.8-blue?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/oracle-guardian-ai/) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge&logo=pypi&logoColor=white)](https://github.com/ambv/black)
 
 ## Installation
 
-*Provide detailed step-by-step installation instructions. You can name this section **How to Run** or **Getting Started** instead of **Installation** if that's more acceptable for your project*
+You have various options when installing `oracle-guardian-ai`.
+
+### Installing the oracle-guardian-ai base package
+
+```bash
+python3 -m pip install oracle-guardian-ai
+```
+
+### Installing extras libraries
+
+The `all-optional` module will install all optional dependencies. Note the single quotes around installation of extra libraries.
+
+```bash
+python3 -m pip install 'oracle-guardian-ai[all-optional]'
+```
+
+To work with fairness/bias, install the `fairness` module. You can find extra dependencies in [requirements-fairness.txt](./guardian_ai/requirements-fairness.txt).
+
+```bash
+python3 -m pip install 'oracle-guardian-ai[fairness]'
+```
+
+To work with privacy estimation, install the `privacy` module. You can find extra dependencies in [requirements-privacy.txt](./guardian_ai/requirements-privacy.txt).
+
+```bash
+python3 -m pip install 'oracle-guardian-ai[privacy]'
+```
 
 ## Documentation
-
-*Developer-oriented documentation can be published on GitHub, but all product documentation must be published on <https://docs.oracle.com>*
-
-## Examples
-
-*Describe any included examples or provide a link to a demo/tutorial*
-
-## Help
-
-*Inform users on where to get help or how to receive official support from Oracle (if applicable)*
+  - [Oracle Guardian AI Documentation](https://oracle-guardian-ai.readthedocs.io/en/latest/index.html)
+  - [OCI Data Science and AI services Examples](https://github.com/oracle/oci-data-science-ai-samples)
+  - [Oracle AI & Data Science Blog](https://blogs.oracle.com/ai-and-datascience/)
 
 ## Contributing
 
-*If your project has specific contribution requirements, update the CONTRIBUTING.md file to ensure those requirements are clearly explained*
+This project welcomes contributions from the community. Before submitting a pull request, please review our [contribution guide](./CONTRIBUTING.md).
 
-This project welcomes contributions from the community. Before submitting a pull request, please [review our contribution guide](./CONTRIBUTING.md)
+Find Getting Started instructions for developers in [README-development.md](./README-development.md).
 
 ## Security
 
-Please consult the [security guide](./SECURITY.md) for our responsible security vulnerability disclosure process
+Consult the security guide [SECURITY.md](./SECURITY.md) for our responsible security vulnerability disclosure process.
 
 ## License
 
-*The correct copyright notice format for both documentation and software is*
-    "Copyright (c) [year,] year Oracle and/or its affiliates."
-*You must include the year the content was first released (on any platform) and the most recent year in which it was revised*
+Copyright (c) 2023 Oracle and/or its affiliates. Licensed under the [Universal Permissive License v1.0](https://oss.oracle.com/licenses/upl/).
 
-Copyright (c) 2023 Oracle and/or its affiliates.
 
-*Replace this statement if your project is not licensed under the UPL*
-
-Released under the Universal Permissive License v1.0 as shown at
-<https://oss.oracle.com/licenses/upl/>.

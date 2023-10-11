@@ -1,0 +1,4 @@
+include LICENSE.txt
+include THIRD_PARTY_LICENSES.txt
+include guardian_ai/requirements-*.txt
+include pyproject.toml
