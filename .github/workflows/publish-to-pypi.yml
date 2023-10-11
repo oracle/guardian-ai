@@ -25,7 +25,7 @@ jobs:
       - name: Publish distribution 📦 to PyPI
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.GH_ORACLE_GUARDIAN_AI_TOKEN }}
+          TWINE_PASSWORD: ${{ secrets.GH_ORACLE_GUARDIAN_AI_PYPI_TOKEN }}
         run: |
           pip install twine
           twine upload dist/* -u $TWINE_USERNAME -p $TWINE_PASSWORD
