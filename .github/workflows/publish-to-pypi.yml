@@ -16,6 +16,7 @@ jobs:
           python-version: "3.x"
       - name: Build distribution 📦
         run: |
+          SETUPTOOLS_USE_DISTUTILS=stdlib
           pip install build
           make dist
       - name: Validate
