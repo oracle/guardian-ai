@@ -1,5 +1,6 @@
 autodoc
 nbsphinx
+oracle-guardian-ai
 sphinx
 sphinx_copybutton
 sphinx_code_tabs
