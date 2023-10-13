@@ -1,6 +1,6 @@
 # Oracle Guardian AI Open Source Project
 
-[![PyPI](https://img.shields.io/badge/pypi-v1.0.0-blue?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/oracle-guardian-ai/) [![Python](https://img.shields.io/badge/python-3.8-blue?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/oracle-guardian-ai/) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge&logo=pypi&logoColor=white)](https://github.com/ambv/black)
+[![PyPI](https://img.shields.io/pypi/v/oracle-guardian-ai.svg?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/oracle-guardian-ai/) [![Python](https://img.shields.io/pypi/pyversions/oracle-guardian-ai.svg?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/oracle-guardian-ai/) [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge&logo=pypi&logoColor=white)](https://github.com/ambv/black)
 
 Oracle Guardian AI Open Source Project is a library consisting of tools to assess fairness/bias and privacy of machine learning models and data sets. This package contains `fairness` and `privacy_estimation` modules.
 
