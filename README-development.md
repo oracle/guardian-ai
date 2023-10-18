@@ -79,7 +79,7 @@ This wheel can then be installed using `pip`.
 
 # Security
 
-Consult the [security guide](./SECURITY.md) for our responsible security vulnerability disclosure process.
+Consult the [security guide](https://github.com/oracle/guardian-ai/blob/main/SECURITY.md) for our responsible security vulnerability disclosure process.
 
 # License
 
