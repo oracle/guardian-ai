@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from itertools import product
+from collections import defaultdict 
 from typing import TYPE_CHECKING, Optional
 
 from guardian_ai.fairness.utils.lazy_loader import LazyLoader
@@ -139,7 +140,13 @@ class _RawReduction(_Reduction):
     display_name = "Raw"
 
     def __call__(self, groups, metrics):
-        return dict(zip(groups, metrics))
+        res = defaultdict(list)
+        for group, metric in zip(groups, metrics):
+            res[group] += [metric]
+        for group in res:
+            res[group] = sum(res[group])/len(res[group])
+        res = dict(res)
+        return res
 
 
 def _get_check_reduction(reduction):
