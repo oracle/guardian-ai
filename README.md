@@ -26,13 +26,13 @@ The `all-optional` module will install all optional dependencies. Note the singl
 python3 -m pip install 'oracle-guardian-ai[all-optional]'
 ```
 
-To work with fairness/bias, install the `fairness` module. You can find extra dependencies in [requirements-fairness.txt](./guardian_ai/requirements-fairness.txt).
+To work with fairness/bias, install the `fairness` module. You can find extra dependencies in [requirements-fairness.txt](https://github.com/oracle/guardian-ai/blob/main/guardian_ai/requirements-fairness.txt).
 
 ```bash
 python3 -m pip install 'oracle-guardian-ai[fairness]'
 ```
 
-To work with privacy estimation, install the `privacy` module. You can find extra dependencies in [requirements-privacy.txt](./guardian_ai/requirements-privacy.txt).
+To work with privacy estimation, install the `privacy` module. You can find extra dependencies in [requirements-privacy.txt](https://github.com/oracle/guardian-ai/blob/main/guardian_ai/requirements-privacy.txt).
 
 ```bash
 python3 -m pip install 'oracle-guardian-ai[privacy]'
@@ -72,11 +72,11 @@ bias_mitigated_model.predict(X_test)
 
 This project welcomes contributions from the community. Before submitting a pull request, please review our [contribution guide](./CONTRIBUTING.md).
 
-Find Getting Started instructions for developers in [README-development.md](./README-development.md).
+Find Getting Started instructions for developers in [README-development.md](https://github.com/oracle/guardian-ai/blob/main/README-development.md).
 
 ## Security
 
-Consult the security guide [SECURITY.md](./SECURITY.md) for our responsible security vulnerability disclosure process.
+Consult the security guide [SECURITY.md](https://github.com/oracle/guardian-ai/blob/main/SECURITY.md) for our responsible security vulnerability disclosure process.
 
 ## License
 
