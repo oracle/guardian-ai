@@ -75,7 +75,7 @@ def _model_metric(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
     allow_y_true_none : bool
         Whether or not to allow `y_true` to be set to ``None``.
     allow_distance_measure_none : bool
@@ -119,7 +119,7 @@ def _model_metric(
         )
 
         score, unpriv_group_repr = _get_score_group_from_metrics(
-            subgroup_metrics, distance, metric, unpriv_group, attr_idx_to_vals
+            subgroup_metrics, distance, metric, unpriv_group, priv_group, attr_idx_to_vals
         )
 
         scores.append(score)
@@ -157,7 +157,7 @@ class _ModelFairnessScorer(_FairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     allow_distance_measure_none : bool, default=True
         Whether or not to allow ``distance_measure`` to be set to ``None``.
@@ -283,7 +283,7 @@ class ModelStatisticalParityScorer(_ModelFairnessScorer):  # noqa: D412
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
 
     References
@@ -409,7 +409,7 @@ def model_statistical_parity(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -502,7 +502,7 @@ class TruePositiveRateScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     References
     ----------
@@ -566,7 +566,7 @@ def true_positive_rate(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -635,7 +635,7 @@ class FalsePositiveRateScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     References
     ----------
@@ -700,7 +700,7 @@ def false_positive_rate(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -769,7 +769,7 @@ class FalseNegativeRateScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     References
     ----------
@@ -834,7 +834,7 @@ def false_negative_rate(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -903,7 +903,7 @@ class FalseOmissionRateScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Examples
     --------
@@ -962,7 +962,7 @@ def false_omission_rate(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -1032,7 +1032,7 @@ class FalseDiscoveryRateScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Examples
     --------
@@ -1091,7 +1091,7 @@ def false_discovery_rate(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -1161,7 +1161,7 @@ class ErrorRateScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Examples
     --------
@@ -1220,7 +1220,7 @@ def error_rate(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -1296,7 +1296,7 @@ class EqualizedOddsScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     References
     ----------
@@ -1362,7 +1362,7 @@ def equalized_odds(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -1438,7 +1438,7 @@ class TheilIndexScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     References
     ----------
@@ -1505,7 +1505,7 @@ def theil_index(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------

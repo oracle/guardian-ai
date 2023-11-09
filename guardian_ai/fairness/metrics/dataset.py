@@ -76,7 +76,7 @@ def _dataset_metric(
         Possible values are:
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
     allow_distance_measure_none : bool
         Whether or not to allow ``distance_measure`` to be set
         to ``None``.
@@ -102,11 +102,11 @@ def _dataset_metric(
 
     groups = []
     scores = []
-    for unpriv_group, priv_groups in subgroup_divisions:
-        subgroup_metrics = BinaryLabelDatasetMetric(ds_true, unpriv_group, priv_groups)
+    for unpriv_group, priv_group in subgroup_divisions:
+        subgroup_metrics = BinaryLabelDatasetMetric(ds_true, unpriv_group, priv_group)
 
         score, group_repr = _get_score_group_from_metrics(
-            subgroup_metrics, distance, metric, unpriv_group, attr_idx_to_vals
+            subgroup_metrics, distance, metric, unpriv_group, priv_group, attr_idx_to_vals
         )
 
         scores.append(score)
@@ -143,7 +143,7 @@ class _DatasetFairnessScorer(_FairnessScorer):
         Possible values are:
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
     allow_distance_measure_none : bool
         Whether or not to allow ``distance_measure`` to be set to ``None``.
     """
@@ -276,7 +276,7 @@ class DatasetStatisticalParityScorer(_DatasetFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
 
     References
@@ -339,7 +339,7 @@ def dataset_statistical_parity(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Examples
     --------
