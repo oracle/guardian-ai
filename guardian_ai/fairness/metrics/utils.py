@@ -322,12 +322,12 @@ def _get_score_group_from_metrics(
     metric_fn = getattr(subgroup_metrics, metric)
     score = distance(subgroup_metrics, metric_fn)
 
-    group_repr = []
+    group_repr = tuple()
     for group in [unpriv_group, priv_group]:
         cur_group_repr = tuple(
             (attr, attr_idx_to_vals[attr][idx]) for attr, idx in group[0].items()
         )
-        group_repr.append(cur_group_repr)
+        group_repr += (cur_group_repr,)
 
     return score, group_repr
 
