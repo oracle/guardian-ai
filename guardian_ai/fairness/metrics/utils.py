@@ -118,34 +118,31 @@ class _Reduction(ABC):
     display_name = ""
 
     @abstractmethod
-    def __call__(self, groups, metrics):
+    def __call__(self, subgroup_pairs, metrics):
         pass
 
 
 class _MaxReduction(_Reduction):
     display_name = "Maximum"
 
-    def __call__(self, groups, metrics):
+    def __call__(self, subgroup_pairs, metrics):
         return np.nanmax(metrics)
 
 
 class _MeanReduction(_Reduction):
     display_name = "Mean"
 
-    def __call__(self, groups, metrics):
+    def __call__(self, subgroup_pairs, metrics):
         return np.nanmean(metrics)
 
 
 class _RawReduction(_Reduction):
     display_name = "Raw"
 
-    def __call__(self, groups, metrics):
-        res = defaultdict(list)
-        for group, metric in zip(groups, metrics):
-            res[group] += [metric]
-        for group in res:
-            res[group] = sum(res[group])/len(res[group])
-        res = dict(res)
+    def __call__(self, subgroup_pairs, metrics):
+        res = {}
+        for subgroup_pair, metric in zip(subgroup_pairs, metrics):
+            res[subgroup_pair] = metric
         return res
 
 
@@ -320,15 +317,17 @@ def _get_check_inputs(
 
 
 def _get_score_group_from_metrics(
-    subgroup_metrics, distance, metric, unpriv_group, attr_idx_to_vals
+    subgroup_metrics, distance, metric, unpriv_group, priv_group, attr_idx_to_vals
 ):
     metric_fn = getattr(subgroup_metrics, metric)
     score = distance(subgroup_metrics, metric_fn)
 
-    group = unpriv_group[0]
-    group_repr = tuple(
-        (attr, attr_idx_to_vals[attr][idx]) for attr, idx in group.items()
-    )
+    group_repr = []
+    for group in [unpriv_group, priv_group]:
+        cur_group_repr = tuple(
+            (attr, attr_idx_to_vals[attr][idx]) for attr, idx in group[0].items()
+        )
+        group_repr.append(cur_group_repr)
 
     return score, group_repr
 
