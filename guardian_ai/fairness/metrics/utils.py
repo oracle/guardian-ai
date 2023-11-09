@@ -279,7 +279,7 @@ def _get_attr_idx_mappings(subgroups):
     return attr_vals_to_idx, attr_idx_to_vals
 
 
-def _get_one_vs_all_subgroup_divisions(subgroups):
+def _get_subgroup_divisions(subgroups):
     protected_attributes = subgroups.columns
 
     all_attr_vals = [np.unique(subgroups[attr]) for attr in protected_attributes]
@@ -314,7 +314,7 @@ def _get_check_inputs(
     _check_subgroups(subgroups)
     attr_vals_to_idx, attr_idx_to_vals = _get_attr_idx_mappings(subgroups)
 
-    subgroup_divisions = _get_one_vs_all_subgroup_divisions(subgroups)
+    subgroup_divisions = _get_subgroup_divisions(subgroups)
 
     return reduction, distance, attr_vals_to_idx, attr_idx_to_vals, subgroup_divisions
 
