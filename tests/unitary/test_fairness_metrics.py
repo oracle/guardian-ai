@@ -675,98 +675,84 @@ def calibration_dataset_two_classes():
 model_scorers_two_classes_calibration_exps = {
     "model_statistical_parity_scorer": {  # male=0.5, female=0.75
         (("distance_measure", "diff"), ("reduction", None)): {
-            (("sex", "male"),): 0.25,
-            (("sex", "female"),): 0.25,
+            ("female", "male"): 0.25
         },
         (("distance_measure", "diff"), ("reduction", "max")): 0.25,
         (("distance_measure", "diff"), ("reduction", "mean")): 0.25,
         (("distance_measure", "ratio"), ("reduction", None)): {
-            (("sex", "male"),): 1.5,
-            (("sex", "female"),): 1.5,
+           ("female", "male"): 1.5
         },
         (("distance_measure", "ratio"), ("reduction", "max")): 1.5,
         (("distance_measure", "ratio"), ("reduction", "mean")): 1.5,
     },
     "true_positive_rate_scorer": {  # male=0.5, female=0.5
         (("distance_measure", "diff"), ("reduction", None)): {
-            (("sex", "male"),): 0.0,
-            (("sex", "female"),): 0.0,
+            ("female", "male"): 0.0
         },
         (("distance_measure", "diff"), ("reduction", "max")): 0.0,
         (("distance_measure", "diff"), ("reduction", "mean")): 0.0,
         (("distance_measure", "ratio"), ("reduction", None)): {
-            (("sex", "male"),): 1.0,
-            (("sex", "female"),): 1.0,
+            ("female", "male"): 1.0
         },
         (("distance_measure", "ratio"), ("reduction", "max")): 1.0,
         (("distance_measure", "ratio"), ("reduction", "mean")): 1.0,
     },
     "false_positive_rate_scorer": {  # male=0.5, female=1.0
         (("distance_measure", "diff"), ("reduction", None)): {
-            (("sex", "male"),): 0.5,
-            (("sex", "female"),): 0.5,
+            ("female", "male"): 0.5
         },
         (("distance_measure", "diff"), ("reduction", "max")): 0.5,
         (("distance_measure", "diff"), ("reduction", "mean")): 0.5,
         (("distance_measure", "ratio"), ("reduction", None)): {
-            (("sex", "male"),): 2.0,
-            (("sex", "female"),): 2.0,
+            ("female", "male"): 2.0
         },
         (("distance_measure", "ratio"), ("reduction", "max")): 2.0,
         (("distance_measure", "ratio"), ("reduction", "mean")): 2.0,
     },
     "false_negative_rate_scorer": {  # male=0.5, female=0.5
         (("distance_measure", "diff"), ("reduction", None)): {
-            (("sex", "male"),): 0.0,
-            (("sex", "female"),): 0.0,
+            ("female", "male"): 0.0
         },
         (("distance_measure", "diff"), ("reduction", "max")): 0.0,
         (("distance_measure", "diff"), ("reduction", "mean")): 0.0,
         (("distance_measure", "ratio"), ("reduction", None)): {
-            (("sex", "male"),): 1.0,
-            (("sex", "female"),): 1.0,
+            ("female", "male"): 1.0
         },
         (("distance_measure", "ratio"), ("reduction", "max")): 1.0,
         (("distance_measure", "ratio"), ("reduction", "mean")): 1.0,
     },
     "false_omission_rate_scorer": {  # male=0.67, female=1.0
         (("distance_measure", "diff"), ("reduction", None)): {
-            (("sex", "male"),): 1 / 3,
-            (("sex", "female"),): 1 / 3,
+            ("female", "male"): 1 / 3
         },
         (("distance_measure", "diff"), ("reduction", "max")): 1 / 3,
         (("distance_measure", "diff"), ("reduction", "mean")): 1 / 3,
         (("distance_measure", "ratio"), ("reduction", None)): {
-            (("sex", "male"),): 1.5,
-            (("sex", "female"),): 1.5,
+            ("female", "male"): 1.5
         },
         (("distance_measure", "ratio"), ("reduction", "max")): 1.5,
         (("distance_measure", "ratio"), ("reduction", "mean")): 1.5,
     },
     "false_discovery_rate_scorer": {  # male=0.33, female=0.67
         (("distance_measure", "diff"), ("reduction", None)): {
-            (("sex", "male"),): 1 / 3,
-            (("sex", "female"),): 1 / 3,
+            ("female", "male"): 1 / 3
         },
         (("distance_measure", "diff"), ("reduction", "max")): 1 / 3,
         (("distance_measure", "diff"), ("reduction", "mean")): 1 / 3,
         (("distance_measure", "ratio"), ("reduction", None)): {
-            (("sex", "male"),): 2.0,
-            (("sex", "female"),): 2.0,
+            ("female", "male"): 2.0
         },
         (("distance_measure", "ratio"), ("reduction", "max")): 2.0,
         (("distance_measure", "ratio"), ("reduction", "mean")): 2.0,
     },
     "error_rate_scorer": {  # male=0.5, female=0.75
         (("distance_measure", "diff"), ("reduction", None)): {
-            (("sex", "male"),): 0.25,
-            (("sex", "female"),): 0.25,
+            ("female", "male"): 0.25
         },
         (("distance_measure", "diff"), ("reduction", "max")): 0.25,
         (("distance_measure", "diff"), ("reduction", "mean")): 0.25,
         (("distance_measure", "ratio"), ("reduction", None)): {
-            (("sex", "male"),): 1.5,
-            (("sex", "female"),): 1.5,
+            ("female", "male"): 1.5
         },
         (("distance_measure", "ratio"), ("reduction", "max")): 1.5,
         (("distance_measure", "ratio"), ("reduction", "mean")): 1.5,
@@ -793,14 +779,12 @@ def test_calibration_model_scorers_two_classes(calibration_dataset_two_classes, 
 dataset_scorers_two_classes_calibration_exps = {
     "dataset_statistical_parity_scorer": {  # male=0.66, female=0.5
         (("distance_measure", "diff"), ("reduction", None)): {
-            (("sex", "male"),): 1 / 6,
-            (("sex", "female"),): 1 / 6,
+            ("female", "male"): 1 / 6
         },
         (("distance_measure", "diff"), ("reduction", "max")): 1 / 6,
         (("distance_measure", "diff"), ("reduction", "mean")): 1 / 6,
         (("distance_measure", "ratio"), ("reduction", None)): {
-            (("sex", "male"),): 4 / 3,
-            (("sex", "female"),): 4 / 3,
+            ("female", "male"): 4 / 3
         },
         (("distance_measure", "ratio"), ("reduction", "max")): 4 / 3,
         (("distance_measure", "ratio"), ("reduction", "mean")): 4 / 3,
