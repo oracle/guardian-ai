@@ -111,6 +111,7 @@ def _model_metric(
 
     groups = []
     scores = []
+    visited_subgroup_pairs = set()
     # subgroup_divisions is a list of all subgroup pairs,
     # e.g. [([{'sex': 0, 'race': 0}], [{'sex': 0, 'race': 1}]), ...]
     for unpriv_group, priv_group in subgroup_divisions:
@@ -118,12 +119,13 @@ def _model_metric(
             ds_true, ds_pred, unpriv_group, priv_group
         )
 
-        score, unpriv_group_repr = _get_score_group_from_metrics(
+        score, group_repr = _get_score_group_from_metrics(
             subgroup_metrics, distance, metric, unpriv_group, priv_group, attr_idx_to_vals
         )
-
-        scores.append(score)
-        groups.append(unpriv_group_repr)
+        if (group_repr[1], group_repr[0]) not in visited_subgroup_pairs:
+            scores.append(score)
+            groups.append(group_repr)
+            visited_subgroup_pairs.add(group_repr)
 
     return reduction(groups, scores)
 
