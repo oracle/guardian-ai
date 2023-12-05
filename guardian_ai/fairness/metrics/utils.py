@@ -325,8 +325,10 @@ def _get_score_group_from_metrics(
     group_repr = tuple()
     for group in [unpriv_group, priv_group]:
         cur_group_repr = tuple(
-            (attr, attr_idx_to_vals[attr][idx]) for attr, idx in group[0].items()
+            attr_idx_to_vals[attr][idx] for attr, idx in group[0].items()
         )
+        if len(cur_group_repr) == 1:
+            cur_group_repr = cur_group_repr[0]
         group_repr += (cur_group_repr,)
 
     return score, group_repr
