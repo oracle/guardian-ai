@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from itertools import product
+from collections import defaultdict 
 from typing import TYPE_CHECKING, Optional
 
 from guardian_ai.fairness.utils.lazy_loader import LazyLoader
@@ -117,29 +118,32 @@ class _Reduction(ABC):
     display_name = ""
 
     @abstractmethod
-    def __call__(self, groups, metrics):
+    def __call__(self, subgroup_pairs, metrics):
         pass
 
 
 class _MaxReduction(_Reduction):
     display_name = "Maximum"
 
-    def __call__(self, groups, metrics):
+    def __call__(self, subgroup_pairs, metrics):
         return np.nanmax(metrics)
 
 
 class _MeanReduction(_Reduction):
     display_name = "Mean"
 
-    def __call__(self, groups, metrics):
+    def __call__(self, subgroup_pairs, metrics):
         return np.nanmean(metrics)
 
 
 class _RawReduction(_Reduction):
     display_name = "Raw"
 
-    def __call__(self, groups, metrics):
-        return dict(zip(groups, metrics))
+    def __call__(self, subgroup_pairs, metrics):
+        res = {}
+        for subgroup_pair, metric in zip(subgroup_pairs, metrics):
+            res[subgroup_pair] = metric
+        return res
 
 
 def _get_check_reduction(reduction):
@@ -272,7 +276,7 @@ def _get_attr_idx_mappings(subgroups):
     return attr_vals_to_idx, attr_idx_to_vals
 
 
-def _get_one_vs_all_subgroup_divisions(subgroups):
+def _get_subgroup_divisions(subgroups):
     protected_attributes = subgroups.columns
 
     all_attr_vals = [np.unique(subgroups[attr]) for attr in protected_attributes]
@@ -307,21 +311,25 @@ def _get_check_inputs(
     _check_subgroups(subgroups)
     attr_vals_to_idx, attr_idx_to_vals = _get_attr_idx_mappings(subgroups)
 
-    subgroup_divisions = _get_one_vs_all_subgroup_divisions(subgroups)
+    subgroup_divisions = _get_subgroup_divisions(subgroups)
 
     return reduction, distance, attr_vals_to_idx, attr_idx_to_vals, subgroup_divisions
 
 
 def _get_score_group_from_metrics(
-    subgroup_metrics, distance, metric, unpriv_group, attr_idx_to_vals
+    subgroup_metrics, distance, metric, unpriv_group, priv_group, attr_idx_to_vals
 ):
     metric_fn = getattr(subgroup_metrics, metric)
     score = distance(subgroup_metrics, metric_fn)
 
-    group = unpriv_group[0]
-    group_repr = tuple(
-        (attr, attr_idx_to_vals[attr][idx]) for attr, idx in group.items()
-    )
+    group_repr = tuple()
+    for group in [unpriv_group, priv_group]:
+        cur_group_repr = tuple(
+            attr_idx_to_vals[attr][idx] for attr, idx in group[0].items()
+        )
+        if len(cur_group_repr) == 1:
+            cur_group_repr = cur_group_repr[0]
+        group_repr += (cur_group_repr,)
 
     return score, group_repr
 

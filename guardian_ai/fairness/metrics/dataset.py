@@ -42,7 +42,7 @@ BinaryLabelDatasetMetric = LazyLoader(
 )
 
 
-def _one_vs_all_dataset_metric(
+def _dataset_metric(
     y_true: Union[pd.Series, np.ndarray, List],
     subgroups: pd.DataFrame,
     metric: str,
@@ -51,10 +51,9 @@ def _one_vs_all_dataset_metric(
     allow_distance_measure_none: bool,
 ):
     """
-    Compute engine for all one-vs-all dataset metrics.
+    Compute engine for all dataset metrics.
 
-    This computes a given metric on all pairs of
-    (subgroup, rest of population) for a specified ``subgroups`` input.
+    This computes a given metric on all subgroup pairs for a specified ``subgroups`` input.
 
     Parameters
     ----------
@@ -66,9 +65,9 @@ def _one_vs_all_dataset_metric(
         Name of the base metric to be called.
     distance_measure : str or None
         Determines the distance used to compare a subgroup's metric
-        against the rest of the population. Possible values are:
-            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
+        against the rest of the subgroups. Possible values are:
+            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
         - ``None``, to not use any distance metric. Only allowed if
             `allow_distance_measure_none` is set to True.
     reduction : str or None
@@ -77,7 +76,7 @@ def _one_vs_all_dataset_metric(
         Possible values are:
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
     allow_distance_measure_none : bool
         Whether or not to allow ``distance_measure`` to be set
         to ``None``.
@@ -103,24 +102,28 @@ def _one_vs_all_dataset_metric(
 
     groups = []
     scores = []
-    for unpriv_group, priv_groups in subgroup_divisions:
-        subgroup_metrics = BinaryLabelDatasetMetric(ds_true, unpriv_group, priv_groups)
+    visited_subgroup_pairs = set()
+    # subgroup_divisions is a list of all subgroup pairs,
+    # e.g. [([{'sex': 0, 'race': 0}], [{'sex': 0, 'race': 1}]), ...]
+    for unpriv_group, priv_group in subgroup_divisions:
+        subgroup_metrics = BinaryLabelDatasetMetric(ds_true, unpriv_group, priv_group)
 
         score, group_repr = _get_score_group_from_metrics(
-            subgroup_metrics, distance, metric, unpriv_group, attr_idx_to_vals
+            subgroup_metrics, distance, metric, unpriv_group, priv_group, attr_idx_to_vals
         )
-
-        scores.append(score)
-        groups.append(group_repr)
+        if (group_repr[1], group_repr[0]) not in visited_subgroup_pairs:
+            scores.append(score)
+            groups.append(group_repr)
+            visited_subgroup_pairs.add(group_repr)
 
     return reduction(groups, scores)
 
 
-class _OneVsAllDatasetFairnessScorer(_FairnessScorer):
+class _DatasetFairnessScorer(_FairnessScorer):
     """
-    Common base object for all one-vs-all dataset metrics.
+    Common base object for all dataset metrics.
 
-    This stores settings to pass on to the ``_one_vs_all_dataset_metric``
+    This stores settings to pass on to the ``_dataset_metric``
     compute engine and does subgroups generation from a `protected_attributes`
     array on an input array of instances ``X``.
 
@@ -134,9 +137,9 @@ class _OneVsAllDatasetFairnessScorer(_FairnessScorer):
         Name of the base metric to be called.
     distance_measure : str or None
         Determines the distance used to compare a subgroup's metric against
-        the rest of the population. Possible values are:
-            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
+        the rest of the subgroups. Possible values are:
+            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
         - ``None``, to not use any distance metric. Only allowed if
         `allow_distance_measure_none` is set to True.
     reduction : str or None
@@ -144,7 +147,7 @@ class _OneVsAllDatasetFairnessScorer(_FairnessScorer):
         Possible values are:
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
     allow_distance_measure_none : bool
         Whether or not to allow ``distance_measure`` to be set to ``None``.
     """
@@ -234,7 +237,7 @@ class _OneVsAllDatasetFairnessScorer(_FairnessScorer):
         return _place_space_before_capital_letters(fullname)
 
 
-class DatasetStatisticalParityScorer(_OneVsAllDatasetFairnessScorer):
+class DatasetStatisticalParityScorer(_DatasetFairnessScorer):
     """
     Measures the statistical parity [1] of a dataset. Statistical parity (also
     known as Base Rate or Disparate Impact) for a dataset states that a dataset
@@ -250,7 +253,7 @@ class DatasetStatisticalParityScorer(_OneVsAllDatasetFairnessScorer):
     Perfect score
         A perfect score for this metric means that the dataset does not have
         a different ratio of positive labels for a subgroup than it does for
-        the rest of the population. For example, if the protected attributes
+        the rest of the subgroups. For example, if the protected attributes
         are race and sex, then a perfect statistical parity would mean that
         all combinations of values for race and sex have identical ratios of
         positive labels. Perfect values are:
@@ -266,10 +269,10 @@ class DatasetStatisticalParityScorer(_OneVsAllDatasetFairnessScorer):
         values are considered as subgroups.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the population. Possible values are:
+        the rest of the subgroups. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
+            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -277,7 +280,7 @@ class DatasetStatisticalParityScorer(_OneVsAllDatasetFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
 
     References
@@ -329,10 +332,10 @@ def dataset_statistical_parity(
         Dataframe containing protected attributes for each instance.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the population. Possible values are:
+        the rest of the subgroups. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
+            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
 
     reduction : str, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -340,7 +343,7 @@ def dataset_statistical_parity(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Examples
     --------
@@ -350,7 +353,7 @@ def dataset_statistical_parity(
         subgroups = X[['race', 'sex']]
         dataset_statistical_parity(y_true, subgroups)
     """
-    return _one_vs_all_dataset_metric(
+    return _dataset_metric(
         y_true,
         subgroups,
         metric="base_rate",
@@ -482,7 +485,7 @@ class SmoothedEDFScorer(_SimpleDatasetFairnessScorer):
     proposed by Foulds et al. [1].
 
     Smoothed EDF returns the minimal exponential deviation of positive target
-    ratios comparing a subgroup to the rest of the population.
+    ratios comparing a subgroup to the rest of the subgroups.
 
     This metric is related to :class:`.DatasetStatisticalParity` with
     `reduction='max'` and `distance_measure='ratio'`, with the only difference
@@ -491,7 +494,7 @@ class SmoothedEDFScorer(_SimpleDatasetFairnessScorer):
     Perfect score
         A perfect score for this metric is 0, meaning that the dataset does
         not have a different ratio of positive labels for a subgroup than
-        it does for the rest of the population. For example, if the
+        it does for the rest of the subgroups. For example, if the
         protected attributes are race and sex, then a perfect smoothed EDF
         would mean that all combinations of values for race and sex have
         identical ratios of positive labels.

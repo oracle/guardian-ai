@@ -157,7 +157,7 @@ predictions and/or true labels in data comply with a particular fairness
 metric. For this example, we will take a look at the statistical parity
 metric. This metric, also known as demographic parity, measures how much
 a protected group’s outcome varies when compared to the rest of the
-population. Thus, such fairness metrics denote differences in error
+subgroups. Thus, such fairness metrics denote differences in error
 rates for different demographic groups/protected attributes in data.
 Therefore, these metrics are to be **minimized** to decrease
 discrepancies in model predictions with respect to specific groups of
@@ -176,7 +176,7 @@ available as scikit-learn compatible scorers, taking in a list of
 ``protected_attributes`` at creation and then being called with a
 ``model``, ``X``, and ``y`` on which to measure fairness. By default, the
 fairness metric will measure the *difference* between a subgroup’s
-outcome and that of the rest of the population, returning the *mean*
+outcome and that of the rest of the subgroups, returning the *mean*
 disparity over all subgroups. These two options can be changed at the
 creation of the metric, using the ``distance_measure`` and ``reduction``
 arguments, respectively.
@@ -271,7 +271,7 @@ Measure the Compliance of the True Labels of a Dataset with a Fairness Metric
 Given a dataset with some ground truth labels, we can
 check whether those true labels satisfy a particular fairness metric of
 concern. In this context, statistical parity measures the disparity of
-positive label rates between subgroups and the rest of the population.
+positive label rates between subgroups and the rest of the subgroups.
 Dataset fairness metrics are available as scikit-learn compatible
 scorers, taking in a list of ``protected_attributes`` at creation and
 then being called with a ``model``, ``X`` and ``y`` on which to measure
@@ -374,7 +374,7 @@ Note that, unlike statistical parity, we cannot compute equalized odds
 on the dataset since it is dependent to model output. However, we can
 compute other metrics on the dataset like ``Smoothed EDF``; it is
 computed as the minimal exponential deviation of positive target ratios
-comparing a subgroup to the rest of the population.
+comparing a subgroup to the rest of the subgroups.
 
 .. code:: python
 
