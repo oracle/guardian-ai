@@ -4,6 +4,16 @@
 Release Notes
 ==============
 
+1.0.1
+-----
+
+Release date: December 8, 2023
+
+**Bug Fixes:**
+
+* TBD
+
+
 1.0.0
 -----
 
