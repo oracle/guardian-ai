@@ -11,7 +11,7 @@ Release date: December 8, 2023
 
 **Bug Fixes:**
 
-* TBD
+* Fixed a bug in the rate-based fairness metrics that caused them to report incomplete results when using ``reduction=None``.
 
 
 1.0.0
