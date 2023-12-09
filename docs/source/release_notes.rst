@@ -4,6 +4,16 @@
 Release Notes
 ==============
 
+1.0.1
+-----
+
+Release date: December 8, 2023
+
+**Bug Fixes:**
+
+* Fixed a bug in the rate-based fairness metrics that caused them to report incomplete results when using ``reduction=None``.
+
+
 1.0.0
 -----
 
