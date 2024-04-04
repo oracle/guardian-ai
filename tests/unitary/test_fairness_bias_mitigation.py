@@ -225,10 +225,14 @@ def test_group_ranges(sensitive_dataset_and_model):
         accuracy_metric=AN_ACCURACY_METRIC,
         random_seed=RANDOM_SEED,
     )
-
-    group_ranges = resp_model._get_group_ranges(
-        probas, groups, unique_groups, unique_group_names
+    resp_model._unique_groups_ = unique_groups
+    resp_model._unique_group_names_ = unique_group_names
+    _, max_multiplier = resp_model._warmstart_multipliers(
+        X,
+        y,
+        groups,
     )
+    group_ranges = resp_model._get_group_ranges(probas, groups, max_multiplier)
 
     small_ratio = 0.6 / (0.4 + 1e-6)
     expected_small = (1 / small_ratio, small_ratio)
