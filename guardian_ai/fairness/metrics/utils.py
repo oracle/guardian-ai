@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*--
 
-# Copyright (c) 2023 Oracle and/or its affiliates.
+# Copyright (c) 2023, 2024 Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
 """Utils for computing fairness metrics"""
@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from itertools import product
-from collections import defaultdict 
+from collections import defaultdict
 from typing import TYPE_CHECKING, Optional
 
 from guardian_ai.fairness.utils.lazy_loader import LazyLoader

@@ -128,4 +128,3 @@ Bias Mitigation
     bias_mitigated_model.predict(X_test)
     bias_mitigated_model.tradeoff_summary_
     bias_mitigated_model.show_tradeoff(hide_inadmissible=False)
-

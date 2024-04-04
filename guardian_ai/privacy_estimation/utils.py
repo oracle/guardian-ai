@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*--
 
-# Copyright (c) 2023 Oracle and/or its affiliates.
+# Copyright (c) 2023, 2024 Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
 import numpy as np
 
-def log_loss(
-    y_true,
-    y_pred,
-    labels=None
-    ):
+
+def log_loss(y_true, y_pred, labels=None):
     """
     Calculates the standard log loss function.
 
@@ -31,14 +28,10 @@ def log_loss(
     return np.average(loss_vector(y_true, y_pred, labels))
 
 
-def log_loss_vector(
-    y_true,
-    y_pred,
-    labels=None
-):
+def log_loss_vector(y_true, y_pred, labels=None):
     """
-    Return the loss vector that is used to compute log loss. The negative sign from the 
-    standard log loss function is distributed through the vector. To get the log loss value 
+    Return the loss vector that is used to compute log loss. The negative sign from the
+    standard log loss function is distributed through the vector. To get the log loss value
     use the `log_loss` function.
 
     This function is used in place of ``sklearn.metrics.log_loss`` because calculations
@@ -55,7 +48,7 @@ def log_loss_vector(
     Returns
     -------
     loss vector: np.array
-        The cross entropy loss for each sample. 
+        The cross entropy loss for each sample.
     """
 
     n_samples = len(y_true)
@@ -75,7 +68,12 @@ def log_loss_vector(
     # Calculate loss vector
     loss_vector = []
     for i, sample in enumerate(y_true):
-        sample_loss = np.sum([-int(j==spos_dict[sample]) * np.log(y_pred[i][j]) for j in range(len(labels))])
+        sample_loss = np.sum(
+            [
+                -int(j == spos_dict[sample]) * np.log(y_pred[i][j])
+                for j in range(len(labels))
+            ]
+        )
         loss_vector.append(sample_loss)
 
     return np.array(loss_vector)
