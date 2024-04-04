@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*--
 
-# Copyright (c) 2023 Oracle and/or its affiliates.
+# Copyright (c) 2023, 2024 Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
 """Evaluating the compliance of a dataset with specific fairness metrics"""
@@ -36,10 +36,6 @@ else:
     BinaryLabelDatasetMetric = LazyLoader(
         "aif360.metrics", "BinaryLabelDatasetMetric", suppress_import_warnings=True
     )
-
-BinaryLabelDatasetMetric = LazyLoader(
-    "aif360.metrics", "BinaryLabelDatasetMetric", suppress_import_warnings=True
-)
 
 
 def _dataset_metric(
@@ -109,13 +105,17 @@ def _dataset_metric(
         subgroup_metrics = BinaryLabelDatasetMetric(ds_true, unpriv_group, priv_group)
 
         score, group_repr = _get_score_group_from_metrics(
-            subgroup_metrics, distance, metric, unpriv_group, priv_group, attr_idx_to_vals
+            subgroup_metrics,
+            distance,
+            metric,
+            unpriv_group,
+            priv_group,
+            attr_idx_to_vals,
         )
         if (group_repr[1], group_repr[0]) not in visited_subgroup_pairs:
             scores.append(score)
             groups.append(group_repr)
             visited_subgroup_pairs.add(group_repr)
-
     return reduction(groups, scores)
 
 

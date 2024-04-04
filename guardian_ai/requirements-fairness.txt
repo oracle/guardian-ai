@@ -5,3 +5,4 @@ optuna==3.2.0
 plotly==5.4.0
 pandas==1.4.1
 scikit-learn==1.1.1
+fairlearn==0.10.0

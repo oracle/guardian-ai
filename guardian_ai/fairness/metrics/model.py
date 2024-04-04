@@ -36,6 +36,16 @@ else:
         "aif360.metrics", "ClassificationMetric", suppress_import_warnings=True
     )
 
+_valid_regression_metrics = [
+    "TPR",
+    "statistical_parity",
+    "FPR",
+    "FNR",
+    "FOR",
+    "FDR",
+    "error_rate",
+]
+
 
 def _model_metric(
     y_true: Optional[Union[pd.Series, np.ndarray, List]],
@@ -120,7 +130,12 @@ def _model_metric(
         )
 
         score, group_repr = _get_score_group_from_metrics(
-            subgroup_metrics, distance, metric, unpriv_group, priv_group, attr_idx_to_vals
+            subgroup_metrics,
+            distance,
+            metric,
+            unpriv_group,
+            priv_group,
+            attr_idx_to_vals,
         )
         if (group_repr[1], group_repr[0]) not in visited_subgroup_pairs:
             scores.append(score)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*--
 
-# Copyright (c) 2023 Oracle and/or its affiliates.
+# Copyright (c) 2023, 2024 Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
 from guardian_ai.fairness.metrics.core import (
@@ -38,13 +38,14 @@ from guardian_ai.fairness.metrics.model import (
     theil_index,
     true_positive_rate,
 )
-from guardian_ai.fairness.metrics.utils import _FairnessScorer
+from guardian_ai.fairness.metrics.utils import _FairnessScorer, _positive_fairness_names
 
 __all__ = [
     "_get_fairness_scorer",
     "fairness_scorers_dict",
     "_get_fairness_metric",
     "fairness_metrics_dict",
+    "_positive_fairness_names",
     "FairnessMetric",
     "_FairnessScorer",
     "DatasetStatisticalParityScorer",
