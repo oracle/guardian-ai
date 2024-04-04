@@ -22,4 +22,3 @@ Release date: Oct 13, 2023
 **New Features and Enhancements:**
 
 * Initial repository.
-
