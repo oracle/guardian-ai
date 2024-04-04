@@ -81,5 +81,3 @@ Consult the security guide [SECURITY.md](https://github.com/oracle/guardian-ai/b
 ## License
 
 Copyright (c) 2023 Oracle and/or its affiliates. Licensed under the [Universal Permissive License v1.0](https://oss.oracle.com/licenses/upl/).
-
-

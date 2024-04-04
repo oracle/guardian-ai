@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*--
 
-# Copyright (c) 2023 Oracle and/or its affiliates.
+# Copyright (c) 2023, 2024 Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
 import guardian_ai.privacy_estimation.attack
@@ -47,7 +47,7 @@ def dataset_split_ratios():
         DataSplit.TARGET_ADDITIONAL_TRAIN: 0.1,  # fraction of datapoints included in
         # target model training set, not used in the attack training or testing
         DataSplit.TARGET_VALID: 0.1,  # fraction of datapoints for tuning the target model
-        DataSplit.TARGET_TEST: 0.2  # fraction of datapoints for evaluating the
+        DataSplit.TARGET_TEST: 0.2,  # fraction of datapoints for evaluating the
         # target model
     }
     return dataset_split_ratios
