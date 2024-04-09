@@ -173,7 +173,7 @@ class ModelBiasMitigator:
     random_seed: int, default=0
         Random seed to ensure reproducible outcome.
     third_objective: bool, default=True
-        Uses Outcome regression if True
+        Uses Levelling Down if True
 
     Attributes
     ----------
@@ -288,7 +288,7 @@ class ModelBiasMitigator:
         self._multiplier_names_: Optional[List[str]] = None
         self._admissible_trials_mask_: Optional[pd.DataFrame] = None
         self._third_objective = third_objective
-        self._third_objective_name = "Outcome Regression"
+        self._third_objective_name = "Levelling Down"
 
         self._validate_current_state()
 
@@ -1525,10 +1525,6 @@ class ModelBiasMitigator:
 
         # For some metrics, we can calculate additional defaults
         if self.fairness_metric_name in _inhouse_metrics and self._warmstart:
-            # ----- Find multipliers that approximate EO's optimal solution -----
-            # good accuracy, good disparity, bad regression
-            # print()
-
             # Check if metric is supported by fairlearn
             if self.fairness_metric_name in _automl_to_fairlearn_metric_names:
                 # Fit the EO method as implemented in fairlearn
@@ -1551,7 +1547,6 @@ class ModelBiasMitigator:
                     X, sensitive_features=groups
                 )
                 target_rate = rate_scorer(y, adjusted_predictions)
-                # print(f'EO target rate: {target_rate}')
 
                 # Find multipliers that produce the corresponding target rate as closely as possible for each group
                 multipliers_eo = self._find_multipliers_for_rate(
@@ -1562,10 +1557,6 @@ class ModelBiasMitigator:
                 )
 
                 default_multipliers.append(multipliers_eo)
-            # print(multipliers_eo)
-
-            # ----- Find multipliers that have near-perfect disparity and outcome regression -----
-            # print()
 
             # Do we want to minimize or maximize the given outcome rate?
             if self.fairness_metric_name in _positive_fairness_names:
@@ -1580,11 +1571,8 @@ class ModelBiasMitigator:
                 mask = group_masks[group_name]
                 rates_by_group.append(rate_scorer(y[mask], predictions[mask]))
 
-            # print(rates_by_group)
             # Find the group with the best outcome rate
             target_rate = best(rates_by_group)
-            # print(f'OR target rate: {target_rate}')
-            # print(self._probas_predicted)
 
             # Find multipliers that produce the corresponding target rate as closely as possible for each group
             multipliers_or = self._find_multipliers_for_rate(
@@ -1604,8 +1592,6 @@ class ModelBiasMitigator:
         # unless larger is required to allow the trivial solution above.
         max_multiplier = max(max_multiplier, 10)
 
-        # print(default_multipliers, max_multiplier)
-
         return default_multipliers, max_multiplier
 
     def _find_multipliers_for_rate(self, y, target_rate, rate_scorer, group_masks):
@@ -1614,8 +1600,6 @@ class ModelBiasMitigator:
         for group, group_name, multiplier_name in zip(
             self._unique_groups_, self._unique_group_names_, self._multiplier_names_
         ):
-            # print(group_name)
-
             # Get only the data for this group
             mask = group_masks[group_name]
 
@@ -1651,8 +1635,6 @@ class ModelBiasMitigator:
                 (rates - target_rate) ** 2 + np.abs(thresholds - 0.5) * 10**-5
             )
             ideal_threshold = thresholds[ideal_index]
-            # print(f'Ideal threshold: {ideal_threshold}')
-            # print(f'Corresponding rate: {rates[ideal_index]}')
 
             # Closed form solution to convert thresholds to multipliers
             multipliers[multiplier_name] = (1 - ideal_threshold) / ideal_threshold

@@ -483,7 +483,6 @@ def _place_space_before_capital_letters(input_str):
     return " ".join(capital_letter_words)
 
 
-# TODO: Move everything below here to the metrics module
 def _TP(y_true, y_pred):
     return np.sum(np.logical_and(y_pred == 1, y_true == 1))
 
@@ -556,7 +555,7 @@ def _get_rate(y_true, y_pred, rate):
 
         return FN / (FN + TN)
     else:
-        raise ValueError(f"Undefined rate {rate}")
+        raise GuardianAIValueError(f"Undefined rate {rate}")
 
 
 def _get_rate_scorer(fairness_metric_name):
