@@ -1338,6 +1338,10 @@ class ModelBiasMitigator:
             Whether or not to hide the models that don't satisfy the
             constraint.
         """
+        metric_is_valid = self.fairness_metric_name in _valid_regression_metrics
+        TPR_or_level_down = (
+            self._third_objective_name if metric_is_valid else "TPR Difference"
+        )
         df = self._best_trials_detailed
 
         if hide_inadmissible:
@@ -1354,12 +1358,22 @@ class ModelBiasMitigator:
                 customdata=df[self._third_objective_name],
                 text=df["index"],
                 line_shape="vh" if self._higher_fairness_is_better else "hv",
-                mode="markers+lines",
+                mode="markers" if metric_is_valid else "markers+lines",
+                marker=(
+                    dict(
+                        color=df[self._third_objective_name],
+                        colorscale="Bluered_r",
+                        colorbar=dict(title=self._third_objective_name),
+                        showscale=True,
+                    )
+                    if metric_is_valid
+                    else None
+                ),
                 hovertemplate=f"{self.fairness_metric_name}"
                 + ": %{x:.4f}"
                 + f"<br>{self.accuracy_metric_name}"
                 + ": %{y:.4f}</br>"
-                + f"<br>TPR Difference"
+                + f"<br>{TPR_or_level_down}"
                 + ": %{customdata:.4f}</br>"
                 + "Index: %{text}",
                 name="Multiplier Tuning (Best Models)",
@@ -1415,6 +1429,7 @@ class ModelBiasMitigator:
             xaxis_title=self.fairness_metric_name,
             yaxis_title=self.accuracy_metric_name,
             legend_title="Models",
+            legend_orientation="h" if metric_is_valid else "v",
             plot_bgcolor="rgba(0,0,0,0)",
             width=None,
             height=600,
