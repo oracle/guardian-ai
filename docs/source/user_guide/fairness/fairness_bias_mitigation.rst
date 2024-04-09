@@ -19,11 +19,15 @@ Bias Mitigation
             df[col] = df[col].astype(int)
 
 
+    X_train, X_test, y_train, y_test = train_test_split(
+        df, y.map({">50K": 1, "<=50K": 0}).astype(int), train_size=0.8, random_state=12345
+    )
+
     X_train, X_val, y_train, y_val = train_test_split(
         X_train, y_train, train_size=0.75, random_state=12345
     )
 
-    X_train.shape, X_test.shap
+    X_train.shape, X_test.shape
 
 .. parsed-literal::
 
