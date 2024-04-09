@@ -321,15 +321,14 @@ class ModelBiasMitigator:
             perf = self._get_accuracy_score(self._y, probas)
             fairness = self._get_fairness_score(self._y, probas, self._groups)
             if self.fairness_metric_name in _valid_regression_metrics:
-
                 adjusted_fairness_regressions = []
                 base_fairness_trial = self._regression_metric_trials_["base"]
                 adjusted_fairness_trial = self._get_outcome_rates(
                     self._y, probas, self._groups
                 )
-                self._regression_metric_trials_[trial._trial_id] = (
-                    adjusted_fairness_trial
-                )
+                self._regression_metric_trials_[
+                    trial._trial_id
+                ] = adjusted_fairness_trial
                 for (
                     group_fairness_name,
                     group_fairness_value,
@@ -355,9 +354,9 @@ class ModelBiasMitigator:
                 avg_adjusted_fairness_regression = sum(
                     adjusted_fairness_regressions
                 ) / len(adjusted_fairness_regressions)
-                self._avg_fairness_regression_[trial._trial_id] = (
-                    avg_adjusted_fairness_regression
-                )
+                self._avg_fairness_regression_[
+                    trial._trial_id
+                ] = avg_adjusted_fairness_regression
             if (
                 self.fairness_metric_name in _valid_regression_metrics
                 and self._third_objective
@@ -1496,7 +1495,6 @@ class ModelBiasMitigator:
             ]
 
     def _warmstart_multipliers(self, X, y, groups):
-
         default_multipliers = []
 
         # ----- Multipliers that re-create the original model -----
@@ -1527,14 +1525,12 @@ class ModelBiasMitigator:
 
         # For some metrics, we can calculate additional defaults
         if self.fairness_metric_name in _inhouse_metrics and self._warmstart:
-
             # ----- Find multipliers that approximate EO's optimal solution -----
             # good accuracy, good disparity, bad regression
             # print()
 
             # Check if metric is supported by fairlearn
             if self.fairness_metric_name in _automl_to_fairlearn_metric_names:
-
                 # Fit the EO method as implemented in fairlearn
                 adjusted_model = ThresholdOptimizer(
                     estimator=self._base_estimator,
@@ -1613,7 +1609,6 @@ class ModelBiasMitigator:
         return default_multipliers, max_multiplier
 
     def _find_multipliers_for_rate(self, y, target_rate, rate_scorer, group_masks):
-
         multipliers = {}
 
         for group, group_name, multiplier_name in zip(
@@ -1708,6 +1703,9 @@ def _apply_multiplier(
 
 
 class _PredictionReturner:
+    _estimator_type = "classifier"
+    classes_ = np.array([0, 1])
+
     def predict(self, y_pred):
         self.classes_ = np.unique(y_pred)
         return y_pred

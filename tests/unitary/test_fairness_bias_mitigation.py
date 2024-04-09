@@ -393,7 +393,7 @@ def test_pickle(responsible_model_and_metrics):
 
 
 def test_subsampling():
-    dataset, target = get_dummy_dataset(n_samples=500, n_features=5, n_classes=2)
+    dataset, target = get_dummy_dataset(n_samples=1000, n_features=5, n_classes=2)
     target = target.astype("bool")
     model = Pipeline(
         steps=[
