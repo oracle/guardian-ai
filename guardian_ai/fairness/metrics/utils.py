@@ -500,6 +500,10 @@ def _TN(y_true, y_pred):
 
 
 def _get_rate(y_true, y_pred, rate):
+    y_pred = y_pred.astype(int)
+    if y_true is not None:
+        y_true = y_true.astype(int)
+
     if rate == "statistical_parity":
         # Positive prediction rate
         return np.mean(y_pred)
