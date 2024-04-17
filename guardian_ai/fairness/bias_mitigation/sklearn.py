@@ -1373,8 +1373,8 @@ class ModelBiasMitigator:
             constraint.
         """
         metric_is_valid = self.fairness_metric_name in _valid_regression_metrics
-        TPR_or_level_down = (
-            self._third_objective_name if metric_is_valid else "TPR Difference"
+        level_down = (
+            "</br>Levelling Down: %{customdata:.4f}</br>" if metric_is_valid else ""
         )
 
         df = self._best_trials_detailed
@@ -1416,8 +1416,7 @@ class ModelBiasMitigator:
                 + ": %{x:.4f}"
                 + f"<br>{self.accuracy_metric_name}"
                 + ": %{y:.4f}</br>"
-                + f"<br>{TPR_or_level_down}"
-                + ": %{customdata:.4f}</br>"
+                + level_down
                 + "Index: %{text}",
                 name="Multiplier Tuning (Best Models)",
             )
