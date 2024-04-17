@@ -172,8 +172,6 @@ class ModelBiasMitigator:
         Index of the favorable label to use when computing metrics.
     random_seed: int, default=0
         Random seed to ensure reproducible outcome.
-    third_objective: bool, default=True
-        Uses Levelling Down if True
 
     Attributes
     ----------
@@ -246,7 +244,6 @@ class ModelBiasMitigator:
         regularization_factor: float = 1e-3,
         favorable_label_idx: int = 1,
         random_seed: int = 0,
-        third_objective: bool = True,
     ):
         optuna.logging.set_verbosity(optuna.logging.WARNING)
         self._base_estimator = base_estimator
@@ -287,7 +284,7 @@ class ModelBiasMitigator:
         self._unique_group_names_: Optional[list] = None
         self._multiplier_names_: Optional[List[str]] = None
         self._admissible_trials_mask_: Optional[pd.DataFrame] = None
-        self._third_objective = third_objective
+        self._third_objective = True
         self._third_objective_name = "levelling_down"
 
         self._validate_current_state()
