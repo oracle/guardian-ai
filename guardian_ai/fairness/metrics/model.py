@@ -136,7 +136,6 @@ def _model_metric(
 
                 if (group_repr[1], group_repr[0]) not in visited_subgroup_pairs:
                     score = distance.from_raw_scores(rates[group1], rates[group2])
-
                     scores.append(score)
                     groups.append(group_repr)
                     visited_subgroup_pairs.add(group_repr)
