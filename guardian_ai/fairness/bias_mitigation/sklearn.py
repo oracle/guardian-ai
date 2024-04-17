@@ -288,7 +288,7 @@ class ModelBiasMitigator:
         self._multiplier_names_: Optional[List[str]] = None
         self._admissible_trials_mask_: Optional[pd.DataFrame] = None
         self._third_objective = third_objective
-        self._third_objective_name = "Levelling Down"
+        self._third_objective_name = "levelling_down"
 
         self._validate_current_state()
 
@@ -1054,7 +1054,7 @@ class ModelBiasMitigator:
             self.fairness_metric_name in _valid_regression_metrics
             and self._third_objective
         ):
-            metric_names.append("Thrid Objective: " + self._third_objective_name)
+            metric_names.append("Third Objective: " + self._third_objective_name)
 
         if self.fairness_metric_name in _valid_regression_metrics:
             fairness_trial_names = list(
@@ -1090,6 +1090,12 @@ class ModelBiasMitigator:
             df[self._third_objective_name] = pd.Series(
                 avg_fairness_regression_best_trials
             ).values
+            df[self._third_objective_name] = (
+                np.sign(df[self._third_objective_name]) * df[self._third_objective_name]
+            )
+            df["Third Objective: " + self._third_objective_name] = df[
+                self._third_objective_name
+            ]
 
         # Unwrap regularization factors
         regularization_factors = np.array(
@@ -1128,6 +1134,7 @@ class ModelBiasMitigator:
             ]
         else:
             pareto_columns = [self.accuracy_metric_name, self.fairness_metric_name]
+
         datapoints = df[pareto_columns].copy()
         datapoints[self.fairness_metric_name] = -datapoints[self.fairness_metric_name]
         datapoints = datapoints.to_numpy()
@@ -1141,11 +1148,29 @@ class ModelBiasMitigator:
 
         self._best_trials_detailed = df
         self.tradeoff_summary_ = df.drop(
-            [col for col in df.columns if "regulariz" in col], axis=1
+            [col for col in df.columns if self._should_drop_column(col)],
+            axis=1,
         )
         self.tradeoff_summary_ = self.tradeoff_summary_[
             self.tradeoff_summary_.columns[::-1]
         ]
+
+    def _should_drop_column(self, column: str) -> bool:
+        """Determines if the specified column should be dropped from
+        tradeoff_summary_.
+
+        Arguments
+        ---------
+        column : str
+            The name of the column to check.
+
+        Returns
+        -------
+        bool:
+            True if the column should be dropped, False otherwise.
+        """
+        unwanted_col_keys = ["regulariz", "Third Objective"]
+        return any(unwanted_key in column for unwanted_key in unwanted_col_keys)
 
     def _get_optimization_directions(self) -> List[str]:
         """
@@ -1342,6 +1367,7 @@ class ModelBiasMitigator:
         TPR_or_level_down = (
             self._third_objective_name if metric_is_valid else "TPR Difference"
         )
+
         df = self._best_trials_detailed
 
         if hide_inadmissible:
@@ -1349,26 +1375,34 @@ class ModelBiasMitigator:
 
         df = df.reset_index()  # type: ignore
 
-        fig = go.Figure()
+        marker = None
+        if metric_is_valid:
+            marker = dict(
+                color=df[self._third_objective_name],
+                symbol=[
+                    "star" if val == 0.0 else "circle"
+                    for val in df[self._third_objective_name]
+                ],
+                colorscale="bluered",
+                colorbar=dict(title="Levelling Down"),
+                showscale=True,
+                cmin=0,
+                cmax=max(
+                    max(df[self._third_objective_name]),
+                    max(df[self.fairness_metric_name]),
+                ),
+            )
 
+        fig = go.Figure()
         fig.add_trace(
             go.Scatter(
                 x=df[self.fairness_metric_name],
                 y=df[self.accuracy_metric_name],
-                customdata=df[self._third_objective_name],
+                customdata=df[self._third_objective_name] if metric_is_valid else None,
                 text=df["index"],
                 line_shape="vh" if self._higher_fairness_is_better else "hv",
                 mode="markers" if metric_is_valid else "markers+lines",
-                marker=(
-                    dict(
-                        color=df[self._third_objective_name],
-                        colorscale="Bluered_r",
-                        colorbar=dict(title=self._third_objective_name),
-                        showscale=True,
-                    )
-                    if metric_is_valid
-                    else None
-                ),
+                marker=marker,
                 hovertemplate=f"{self.fairness_metric_name}"
                 + ": %{x:.4f}"
                 + f"<br>{self.accuracy_metric_name}"
@@ -1379,6 +1413,22 @@ class ModelBiasMitigator:
                 name="Multiplier Tuning (Best Models)",
             )
         )
+
+        # dummy traces to show leveling down legend
+        if metric_is_valid:
+            fig.add_trace(
+                go.Scatter(
+                    x=[None],
+                    y=[None],
+                    mode="markers",
+                    marker=dict(
+                        size=10,
+                        color="blue",
+                        symbol="star",
+                    ),
+                    name="No Levelling Down",
+                )
+            )
 
         fig.add_trace(
             go.Scatter(
