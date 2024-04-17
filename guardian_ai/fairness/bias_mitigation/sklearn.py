@@ -1060,6 +1060,15 @@ class ModelBiasMitigator:
             fairness_trial_names = list(
                 list(self._regression_metric_trials_.items())[0][1].keys()
             )
+            _prefix = (
+                "PPR"
+                if self.fairness_metric_name == "statistical_parity"
+                else self.fairness_metric_name
+            )
+            fairness_trial_names = [
+                f"{_prefix}_{name}" for name in fairness_trial_names
+            ]
+
             df = pd.DataFrame(
                 [
                     (
