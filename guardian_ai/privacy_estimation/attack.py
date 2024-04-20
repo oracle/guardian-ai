@@ -260,27 +260,32 @@ class BlackBoxAttack:
         Parameters
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
-            Target model being attacked.
-        X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
-            Input features of the attack datapoints, where ``n_samples`` is the number of samples and
-            ``n_features`` is the number of features.
-        y_attack: ndarray of shape (n_samples, )
-            Vector containing the output labels of the attack data points (not membership label).
-        y_membership: array of shape (n_samples, 1)
-            Vector containing the membership labels.
-        split_type: str
-            Use information cached from running the loss based and merlin attacks.
+            Target model that is being attacked.
+        X_attack_train: {array-like, sparse matrix} of shape (n_samples, n_features),
+            where `n_samples` is the number of samples and `n_features` is the
+            number of features.
+            Input variables for the dataset on which we want to train
+            the attack model. These are the original features (not attack/membership features).
+        y_attack_train: ndarray of shape (n_samples,)
+            Output labels for the dataset on which we want to train
+            the attack model. These are the original labels (not membership labels).
+        y_membership_train: ndarray of shape (n_samples,)
+            Membership labels for the dataset on which we want to train
+            the attack model. These are binary and indicate whether the data
+            point was included in the training dataset of the target model.
+        threshold_grid: List[float]
+            Threshold grid to use for tuning this model.
+        cache_input: bool
+            Should we cache the input values - useful for expensive feature
+            calculations like the merlin ratio.
         use_cache: bool
-            Using the cache or not.
-        features: List[List[float]]
-            Feature vectors of the items - required when the collaborative filtering model
-            is being attacked
+            Should we use the feature values from the cache - useful for Morgan
+            and Combined attacks.
+
         Returns
         -------
-        X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)
-            Input features for the attack model, where ``n_samples`` is the number of samples and
-            ``n_features`` is the number of features.
-            
+        Trained attack model, usually a binary classifier.
+
         """
         if isinstance(
                 self.attack_model, ThresholdClassifier
