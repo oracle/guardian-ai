@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.base import BaseEstimator
 
 from guardian_ai.privacy_estimation.attack import BlackBoxAttack, AttackType
-from guardian_ai.privacy_estimation.model import TargetModel
+from guardian_ai.privacy_estimation.recommender_model import CFModel
 
 
 class CFAttack(BlackBoxAttack):
@@ -37,7 +37,7 @@ class CFAttack(BlackBoxAttack):
     
     def transform_attack_data(
             self,
-            target_model: TargetModel,
+            target_model: CFModel,
             X_attack,
             y_attack,
             y_membership,
@@ -57,12 +57,11 @@ class CFAttack(BlackBoxAttack):
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
             Target model being attacked.
-        X_attack: {array-like, sparse matrix} of shape (n_users, n_items)
-            Input features of the attack datapoints, where ``n_samples`` is the number of samples and
-            ``n_features`` is the number of features.
-        y_attack: ndarray of shape (n_users, n_items)
+        X_attack: 1-d array of shape (n_samples)
+            Input user ids of the attack datapoints, where ``n_samples`` is the number of users
+        y_attack: ndarray of shape (n_samples, n_items)
             Vector containing the output labels of the attack data points (not membership label).
-        y_membership: array of shape (n_users, 1)
+        y_membership: array of shape (n_samples, 1)
             Vector containing the membership labels.
         split_type: str
             Use information cached from running the loss based and merlin attacks.
@@ -79,9 +78,9 @@ class CFAttack(BlackBoxAttack):
 
         """
         user_attributes = []
-        for user, items, label in zip(X_attack, y_attack, y_membership):
-            recommendations = target_model.get_predictions(user,
-                                                           items) if label == 1 else target_model.get_most_popular(
+        for user, items, label in zip(X_attack.tolist(), y_attack.tolist(), y_membership):
+            recommendations = target_model.get_predictions_user(user,
+                                                                items) if label == 1 else target_model.get_most_popular(
                 items)
             top_k = len(recommendations)
             interaction_vector = np.mean([features[m] for m in items], axis=0)

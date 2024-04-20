@@ -6,7 +6,7 @@
 
 import pickle
 from abc import abstractmethod
-
+import pandas as pd
 import sklearn.base as base
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier
@@ -142,6 +142,7 @@ class TargetModel:
         """
         self.model = pickle.load(open(filename, "rb"))
 
+    
     def get_model_name(self):
         """Get default model name."""
         return "default_target_model"
@@ -203,3 +204,4 @@ class MLPTargetModel(TargetModel):
 
     def get_model_name(self):
         return "mlp_" + str(self.hidden_layer_sizes)
+        

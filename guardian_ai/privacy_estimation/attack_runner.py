@@ -366,9 +366,6 @@ class AttackRunner:
                 attack_model_data.X_attack_train,
                 attack_model_data.y_attack_train,
                 attack_model_data.y_membership_train,
-                threshold_grid=self.threshold_grids.get(attack.name, None),
-                cache_input=cache_input,
-                use_cache=use_cache,
                 features=features
             )
         else:

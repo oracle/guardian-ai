@@ -52,6 +52,8 @@ class CombinedBlackBoxAttack(BlackBoxAttack):
         target_model: TargetModel,
         X_attack,
         y_attack,
+        y_membership,
+        features=None,
         split_type: str = None,
         use_cache=False,
     ):
@@ -80,6 +82,8 @@ class CombinedBlackBoxAttack(BlackBoxAttack):
             the number of features.
             Input feature for the attack model - in this case,
             per-instance loss and confidence values
+            @param features:
+            @param y_membership:
 
         """
         if use_cache:
@@ -127,6 +131,8 @@ class CombinedWithMerlinBlackBoxAttack(BlackBoxAttack):
         target_model: TargetModel,
         X_attack,
         y_attack,
+        y_membership,
+        features=None,
         split_type: str = None,
         use_cache: bool = False,
     ):

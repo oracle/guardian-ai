@@ -102,12 +102,12 @@ class CFModel:
     
     def reindex(self, X, y):
         """
-        Transforms the dataset represented by X which is a 1-d array of users ids and Y which
+        Transforms the dataset represented by X which is a 1-d array of user ids and Y which
         is a ndarray of (n_users, n_items)
 
         Returns
         -------
-        train: Transformed pandas.dataframe object containing the new indices for the users and the items.
+        train: Transformed pandas.dataframe object containing three columns userId, itemID and rating.
         """
         user_ids = [], item_ids = [], ratings = []
         temp_df = pd.concat([X, y], axis=1)

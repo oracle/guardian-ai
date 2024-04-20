@@ -222,14 +222,14 @@ class BlackBoxAttack:
         X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
             ``n_features`` is the number of features.
-        y_attack: ndarray of shape (n_users,)
-            Vector containing the  output labels of the attack data points (not membership label).
-        y_membership: ndarray of shape (n_users,)
-            Vector containing the membership label
+        y_attack: ndarray of shape (n_samples, )
+            Vector containing the output labels of the attack data points (not membership label).
+        y_membership: array of shape (n_samples, 1)
+            Vector containing the membership labels.
         split_type: str
-            Whether this is "train" set or "test" set, which is used for Morgan attack.
+            Use information cached from running the loss based and merlin attacks.
         use_cache: bool
-            Whether to use the cache or not.
+            Using the cache or not.
         features: List[List[float]]
             Feature vectors of the items - required when the collaborative filtering model
             is being attacked
@@ -260,34 +260,27 @@ class BlackBoxAttack:
         Parameters
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
-            Target model that is being attacked.
-        X_attack_train: {array-like, sparse matrix} of shape (n_samples, n_features),
-            where `n_samples` is the number of samples and `n_features` is the
-            number of features.
-            Input variables for the dataset on which we want to train
-            the attack model. These are the original features (not attack/membership features).
-        y_attack_train: ndarray of shape (n_samples,)
-            Output labels for the dataset on which we want to train
-            the attack model. These are the original labels (not membership labels).
-        y_membership_train: ndarray of shape (n_samples,)
-            Membership labels for the dataset on which we want to train
-            the attack model. These are binary and indicate whether the data
-            point was included in the training dataset of the target model.
-        threshold_grid: List[float]
-            Threshold grid to use for tuning this model.
-        cache_input: bool
-            Should we cache the input values - useful for expensive feature
-            calculations like the merlin ratio.
+            Target model being attacked.
+        X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
+            Input features of the attack datapoints, where ``n_samples`` is the number of samples and
+            ``n_features`` is the number of features.
+        y_attack: ndarray of shape (n_samples, )
+            Vector containing the output labels of the attack data points (not membership label).
+        y_membership: array of shape (n_samples, 1)
+            Vector containing the membership labels.
+        split_type: str
+            Use information cached from running the loss based and merlin attacks.
         use_cache: bool
-            Should we use the feature values from the cache - useful for Morgan
-            and Combined attacks.
+            Using the cache or not.
         features: List[List[float]]
             Feature vectors of the items - required when the collaborative filtering model
             is being attacked
         Returns
         -------
-        Trained attack model, usually a binary classifier.
-
+        X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)
+            Input features for the attack model, where ``n_samples`` is the number of samples and
+            ``n_features`` is the number of features.
+            
         """
         if isinstance(
                 self.attack_model, ThresholdClassifier
@@ -485,12 +478,12 @@ class LossBasedBlackBoxAttack(BlackBoxAttack):
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
             Target model being attacked.
-        X_attack: {array-like, sparse matrix} of shape (n_users, n_items)
+        X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
             ``n_features`` is the number of features.
-        y_attack: ndarray of shape (n_users, n_items)
+        y_attack: ndarray of shape (n_samples, )
             Vector containing the output labels of the attack data points (not membership label).
-        y_membership: array of shape (n_users, 1)
+        y_membership: array of shape (n_samples, 1)
             Vector containing the membership labels.
         split_type: str
             Use information cached from running the loss based and merlin attacks.
@@ -558,12 +551,12 @@ class ExpectedLossBasedBlackBoxAttack(BlackBoxAttack):
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
             Target model being attacked.
-        X_attack: {array-like, sparse matrix} of shape (n_users, n_items)
+        X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
             ``n_features`` is the number of features.
-        y_attack: ndarray of shape (n_users, n_items)
+        y_attack: ndarray of shape (n_samples, )
             Vector containing the output labels of the attack data points (not membership label).
-        y_membership: array of shape (n_users, 1)
+        y_membership: array of shape (n_samples, 1)
             Vector containing the membership labels.
         split_type: str
             Use information cached from running the loss based and merlin attacks.
@@ -631,12 +624,12 @@ class ConfidenceBasedBlackBoxAttack(BlackBoxAttack):
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
             Target model being attacked.
-        X_attack: {array-like, sparse matrix} of shape (n_users, n_items)
+        X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
             ``n_features`` is the number of features.
-        y_attack: ndarray of shape (n_users, n_items)
+        y_attack: ndarray of shape (n_samples, )
             Vector containing the output labels of the attack data points (not membership label).
-        y_membership: array of shape (n_users, 1)
+        y_membership: array of shape (n_samples, 1)
             Vector containing the membership labels.
         split_type: str
             Use information cached from running the loss based and merlin attacks.
@@ -694,16 +687,16 @@ class ExpectedConfidenceBasedBlackBoxAttack(BlackBoxAttack):
         input variable for the attack. Think of it as feature engineering for building
         the attack model, which is essentially a binary classifier.
 
-        Parameters
+                Parameters
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
             Target model being attacked.
-        X_attack: {array-like, sparse matrix} of shape (n_users, n_items)
+        X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
             ``n_features`` is the number of features.
-        y_attack: ndarray of shape (n_users, n_items)
+        y_attack: ndarray of shape (n_samples, )
             Vector containing the output labels of the attack data points (not membership label).
-        y_membership: array of shape (n_users, 1)
+        y_membership: array of shape (n_samples, 1)
             Vector containing the membership labels.
         split_type: str
             Use information cached from running the loss based and merlin attacks.
