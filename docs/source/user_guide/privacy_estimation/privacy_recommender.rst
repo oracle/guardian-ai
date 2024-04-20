@@ -42,6 +42,10 @@ as the training data of the target recommender model, as well as access to the r
 While this assumption may seem strong, it mirrors realistic scenarios where adversaries gain limited 
 access to such data through creation of false users and webscraping.
 
+This implementation makes the assumption that each type of recommender system uses the most-popular algorithm
+to solve the cold start problem. This means that the most popular items are recommended to users
+who have no previous history of interaction with the system.
+
 This tool currently supports membership inference attacks in the context of collaborative filtering models.
 Attack for sequential recommender systems are not yet implemented.
 
