@@ -81,16 +81,16 @@ def test_prepare_target_and_attack_data(dataset, dataset_split_ratios):
     dataset.prepare_target_and_attack_data(42, dataset_split_ratios)
     assert len(dataset.splits) == 5
     target_model_data = dataset.target_model_data
-    item_features = dataset.item_features()
+    dataset.get_item_features(dataset_split_ratios)
     attack_model_data = dataset.attack_model_data
     assert target_model_data is not None
     assert attack_model_data is not None
-    assert item_features is not None
+    assert dataset.item_features is not None
     assert target_model_data.X_target_train.get_shape() == (200, 30)
     assert attack_model_data.X_attack_test.get_shape() == (199, 30)
 
 
-def test_run_attack(attack_runner, metric_functions):
+def test_run_attack(attack_runner, metric_functions, dataset):
     attack_runner.train_collaborative_filtering_models()
     target_result_string_0 = attack_runner.target_model_result_strings[
         attack_runner.target_recommenders[0].get_model_name()
@@ -122,7 +122,7 @@ def test_run_attack(attack_runner, metric_functions):
     #target_result_string_2_test_f1 = target_result_string_2.split()[2]
     #assert 0.46529411764705875 == pytest.approx(float(target_result_string_2_test_f1))
 
-    item_features = dataset.item_features()
+    item_features = dataset.item_features
     result_attacks = []
     for target_model in attack_runner.target_models:
         for shadow_model in attack_runner.shadow_models:

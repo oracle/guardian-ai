@@ -281,7 +281,9 @@ class BlackBoxAttack:
         use_cache: bool
             Should we use the feature values from the cache - useful for Morgan
             and Combined attacks.
-
+        features: List[List[float]]
+            Feature vectors of the items - required when the collaborative filtering model
+            is being attacked
         Returns
         -------
         Trained attack model, usually a binary classifier.
