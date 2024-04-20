@@ -1,3 +1,5 @@
+import pandas as pd
+
 # Implementation of matrix factorization for recommender inference attack featurization.
 class RecommenderDataSplit(Enum):
     ATTACK_TRAIN_IN = 0
@@ -32,10 +34,7 @@ class RecommenderDataset(Dataset):
   
         df = pd.read_csv(
             source_file, sep=",", skiprows=1, header=None, encoding="utf-8"
-        )  # ignore the headers, especially when reading lots of datasets.
-    
-
-        # first, find the y index and remove it to get x
+        )
         y_ix = target_ix if target_ix is not None else len(df.columns) - 1
         self.df_y = df.iloc[:, y_ix]
         if isinstance(self.df_y[0], bytes):
