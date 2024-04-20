@@ -66,6 +66,7 @@ class AttackRunner:
         assert self.dataset.attack_model_data is not None
         self.target_models = target_models
         self.shadow_models = shadow_models
+        print (self.shadow_models)
         self.attacks = attacks
         self.threshold_grids = threshold_grids
         self.target_model_result_strings = {}
@@ -78,11 +79,11 @@ class AttackRunner:
             print("Target Model: " + target_model.get_model_name())
             target_model_data: TargetCFData = self.dataset.target_model_data
             user_item_df = target_model.reindex(target_model_data.X_target_members,
-                                                target_model_data.y_target_member)
-            train, test, negatives = target_model.train_test_split(user_item_df)
-            target_model.train_model(train, negatives)
+                                                target_model_data.y_target_members)
+            train, test = target_model.train_test_split(user_item_df)
+            target_model.train_model(train, test)
             print("Target Model Train Evaluation: ")
-            (hit_rate, ndcg) = target_model.test_model(test, negatives)
+            (hit_rate, ndcg) = target_model.metrics(test)
             print("Hit Rate:\t%f" % hit_rate,
                   "NDCG:\t%f" % ndcg, sep='\n')
             result_string = (
@@ -103,10 +104,10 @@ class AttackRunner:
             shadow_model_data: TargetCFData = self.dataset.shadow_model_data
             user_item_df = shadow_model.reindex(shadow_model_data.X_target_members,
                                                 shadow_model_data.y_target_members)
-            train, test, negatives = shadow_model.train_test_split(user_item_df)
-            shadow_model.train_model(train, negatives)
+            train, test = shadow_model.train_test_split(user_item_df)
+            shadow_model.train_model(train, test)
             print("Shadow Model Train Evaluation: ")
-            (hit_rate, ndcg) = shadow_model.test_model(test, negatives)
+            (hit_rate, ndcg) = shadow_model.metrics(test)
             print("Hit Rate:\t%f" % hit_rate,
                   "NDCG:\t%f" % ndcg, sep='\n')
             result_string = (
@@ -334,7 +335,7 @@ class AttackRunner:
         
         # And, get the data needed to run the attack
         attack_model_data: AttackModelData = self.dataset.attack_model_data
-        
+        print (attack_model_data)
         # train the attack
         if attack_type == AttackType.CollaborativeFilteringAttack:
             attack.train_attack_model(

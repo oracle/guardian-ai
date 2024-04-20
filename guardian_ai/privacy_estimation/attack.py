@@ -299,7 +299,7 @@ class BlackBoxAttack:
             X_attack_train,
             y_attack_train,
             y_membership_train,
-            features
+            features=features
         )
         if cache_input:
             self.X_membership_train = X_membership_train
@@ -409,9 +409,10 @@ class BlackBoxAttack:
             target_model,
             X_attack_test,
             y_attack_test,
-            features,
+            y_membership_test,
             split_type="test",
             use_cache=use_cache,
+            features=features
         )
         if cache_input:
             self.X_membership_test = X_membership_test

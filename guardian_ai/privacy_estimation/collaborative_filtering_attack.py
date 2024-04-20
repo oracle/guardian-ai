@@ -37,14 +37,12 @@ class CFAttack(BlackBoxAttack):
     
     @staticmethod
     def create_index_map(X, y):
-        user_ids = X.userID.unique()
-        exploded_df = y.explode('itemID')  # Getting unique item IDs
-        item_ids = exploded_df['itemID'].unique()  # Convert to list if you need it as a list
-        user_map = [{original_id: index + 1 for index, original_id in enumerate(user_ids)},
-                    {index + 1: original_id for index, original_id in enumerate(user_ids)}]
-        item_map = [{original_id: index + 1 for index, original_id in enumerate(item_ids)},
-                    {index + 1: original_id for index, original_id in enumerate(item_ids)}]
-        
+        user_ids = sorted(list(set(X)))
+        item_ids = sorted(list(set(y)))
+        user_map = [{original_id: index for index, original_id in enumerate(user_ids)},
+                    {index: original_id for index, original_id in enumerate(user_ids)}]
+        item_map = [{original_id: index for index, original_id in enumerate(item_ids)},
+                    {index: original_id for index, original_id in enumerate(item_ids)}]
         return user_map, item_map
     
     def transform_attack_data(
@@ -89,13 +87,26 @@ class CFAttack(BlackBoxAttack):
             ``n_features`` is the number of features.
 
         """
+        users = X_attack.flatten().tolist()
+        membership = y_membership
         user_attributes = []
-        user_map, item_map, X_mapped, y_mapped = self.create_index_map(X_attack, y_attack)
-        for user, items, label in zip(X_attack.tolist(), y_attack.tolist(), y_membership):
-            user_mapped = user_map[0][user]
-            items_mapped = [item_map[0][i] for i in items]
+        member_items = []
+        member_users = []
+        all_items = []
+        items = y_attack.interactions.tolist()
+        for user,item, label in zip(users, items, membership):
             if label == 1:
-                recommendations_mapped = target_model.get_predictions_user(y_mapped, user_mapped, items_mapped)
+                member_items.append(item)
+                member_users.append(user)
+            all_items.append(item)
+        member_item_list = [item for sublist in member_items for item in sublist]
+        user_map, item_map = self.create_index_map(member_users, member_item_list)
+        all_items_mapped = [item_map[0][item] for item in member_item_list]
+        for user, items, label in zip(users, all_items, membership):
+            if label == 1:
+                user_mapped = user_map[0][user]
+                items_mapped = [item_map[0][i] for i in items]
+                recommendations_mapped = target_model.get_predictions_user(all_items_mapped, user_mapped, items_mapped)
                 recommendations = [item_map[1][rec] for rec in recommendations_mapped]
             else:
                 recommendations = target_model.get_most_popular(y_attack, items)
@@ -111,3 +122,4 @@ class CFAttack(BlackBoxAttack):
             user_attributes.append(vector_shadow)
             X_membership = np.array(user_attributes)
         return X_membership
+        

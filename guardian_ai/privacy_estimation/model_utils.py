@@ -24,7 +24,7 @@ class MultiLayerPerceptron(nn.Module):
 		user_embedding = self.embedding_user(user_indices)
 		item_embedding = self.embedding_item(item_indices)
 		vector = torch.cat([user_embedding, item_embedding], dim=-1)  # the concat latent vector
-		for idx, _ in enumerate(range(len(self.fc_layers))):
+		for idx, _ in enumerate(range(len(self.layers) - 1)):
 			fc_layer = getattr(self, 'fc_layer_' + str(idx))
 			vector = fc_layer(vector)
 			vector = self.relu(vector)
@@ -73,9 +73,31 @@ class NeuralCollaborativeFiltering(nn.Module):
 		for idx, (in_size, out_size) in enumerate(zip(self.layers[:-1], self.layers[1:])):
 			var_name = "fc_layer_" + str(idx)
 			setattr(self, var_name, nn.Linear(in_size, out_size))
-		self.affine_output = nn.Linear(in_features=self.layers[-1] + self.mlp_layers, out_features=1)
+			
+		self.affine_output = nn.Linear(in_features=self.layers[-1] + self.latent_dim, out_features=1)
 		self.logistic = nn.Sigmoid()
+		self.init_weight()
 	
+	def init_weight(self):
+		nn.init.normal_(self.embedding_user_mlp.weight, std=0.01)
+		nn.init.normal_(self.embedding_item_mlp.weight, std=0.01)
+		nn.init.normal_(self.embedding_user_mf.weight, std=0.01)
+		nn.init.normal_(self.embedding_item_mf.weight, std=0.01)
+		
+		# for m in self.fc_layers:
+		#      if isinstance(m, nn.Linear):
+		#          nn.init.xavier_uniform_(m.weight)
+		
+		nn.init.xavier_uniform_(self.fc_layer_0.weight)
+		nn.init.xavier_uniform_(self.fc_layer_1.weight)
+		nn.init.xavier_uniform_(self.fc_layer_2.weight)
+		
+		nn.init.xavier_uniform_(self.affine_output.weight)
+		
+		for m in self.modules():
+			if isinstance(m, nn.Linear) and m.bias is not None:
+				m.bias.data.zero_()
+				
 	def forward(self, user_indices, item_indices):
 		user_embedding_mlp = self.embedding_user_mlp(user_indices)
 		item_embedding_mlp = self.embedding_item_mlp(item_indices)
@@ -86,10 +108,10 @@ class NeuralCollaborativeFiltering(nn.Module):
 		mlp_vector = torch.cat([user_embedding_mlp, item_embedding_mlp], dim=-1)
 		mf_vector = torch.mul(user_embedding_mf, item_embedding_mf)
 		
-		for idx, _ in enumerate(range(len(self.fc_layers))):
+		for idx, _ in enumerate(range(len(self.layers)-1)):
 			fc_layer = getattr(self, 'fc_layer_' + str(idx))
-			vector = fc_layer(vector)
-			vector = self.relu(vector)
+			mlp_vector = fc_layer(mlp_vector)
+			mlp_vector = self.relu(mlp_vector)
 		
 		vector = torch.cat([mlp_vector, mf_vector], dim=-1)
 		logits = self.affine_output(vector)

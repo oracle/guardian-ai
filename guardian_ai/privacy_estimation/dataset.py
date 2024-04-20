@@ -47,25 +47,23 @@ class DataSplit(Enum):
 
 class CFDataSplit(Enum):
     """
-    Prepare data splits. The main idea here is that we need to transform the user-item matrix
-    into per-user data, where for a single user, we list out the items that the user interacted
-    with. We will then carve out a subset of the transformed dataset to train a shadow model. The
-    outputs from the shadow model will be used to train the attack model for both members and
-    non-members (attack_train_in and attack_train_out), which is why we have not declared additional
-    variables for the shadow model training. A subset of the transformed dataset will be used
-    to train the target model (target_train_members and target_non_members). For both the shadow
-    and target model training, we use the leave out one cross-validation method to test the model, which
-    is why we do not need to create datasets for testing the shadow and target models. The datasets
-    used for training the target model will also be used to test the attack model. Additionally,
-    we also need a subset of the transformed data to create the item vector representations (item_dataset). The only
-    constraint is that this subset should contain all the items present in the target and shadow datasets.
-    Note that we first do these finer granularity splits, and then merge them to form the appropriate
-    train and test sets for the target model and the attack model.
-
+    Prepare the data splits. The core concept involves transforming the user-item matrix into per-user data.
+    For each user, we enumerate the items they have interacted with. We'll then select a portion of this
+    transformed dataset to train a shadow model. The shadow model's outputs will serve to train the
+    attack model for both members and non-members (attack_train_in and attack_train_out). This approach
+    eliminates the need for additional variables for training the shadow model. A portion of the transformed
+    dataset will also be used to train the target model (target_train_members and target_non_members). For
+    training both the shadow and target models, we employ the leave-one-out cross-validation method, eliminating
+    the necessity for separate testing datasets for the shadow and target models. The datasets for training
+    the target model will be utilized to assess the attack model as well. Moreover, a subset of the transformed
+    data is required to generate item vector representations (item_dataset), with the stipulation that this
+    subset encompasses all items included in both the target and shadow datasets. It's important to first execute
+    these detailed splits before merging them to form the appropriate training and testing sets for the target
+    and attack models.
+    
     This is a convenience class for specifying the data split ratios. This works for the attacks
     implemented currently, but we can change or use another split for future attacks.
     This is why the Dataset class implements more general data splitting and merging functions.
-
     """
     ATTACK_TRAIN_IN = 0
     ATTACK_TRAIN_OUT = 1
@@ -130,10 +128,6 @@ class TargetCFData:
             y_target_members,
             X_target_non_members,
             y_target_non_members,
-            user_map_members,
-            item_map_members,
-            user_map_non_members,
-            item_map_non_members
     ):
         """
         Create Target Model Data
@@ -142,13 +136,13 @@ class TargetCFData:
 
         Parameters
         ----------
-        X_target_members: 1-d array of shape (n_users)
+        X_target_members: pd.DataFrame with a single column `userID`
             List of users used to train the target model.
-        y_target_members: nd array of shape (n_users,)
+        y_target_members: pd.Dataframe with a single column `interactions`
             List of items each input user interacted with.
-        X_target_members: 1-d array of shape (n_users)
-            List of users used to train the target model for cold-start users.
-        y_target_members: nd array of shape (n_users,)
+        X_target_non_members: pd.DataFrame with a single column `userID`
+            List of cold-start users.
+        y_target_non_members: pd.Dataframe with a single column `interactions`
             List of items the cold-start users interacted with.
 
         """
@@ -785,19 +779,6 @@ class CFDataset(Dataset):
         ----------
         name: str
             Name of the dataset
-        df: dataframe with 4 columns: userID, itemID, rating, timestamp.
-        df_x: darray of shape (n_users),
-            where ``n_users`` is the number of users.
-        df_y: ndarray of shape (n_users, n_items)
-            where ``n_users`` is the number of users and ``n_items`` is the number of items
-            This parameter represents a 2D array where `n_users` is the number of users and
-            `n_items` is the number of items. The array stores ratings that users have given to items,
-            with the position (i, j) indicating the rating user i has given to item j.
-            If a user has not interacted with an item, the corresponding value is set to 0.
-            For example, if a user has rated items 1, 3, and 5 with ratings of 4, 5, and 1 respectively,
-            their corresponding row in the array would look like [0, 4, 0, 5, 0, 1, ...].
-        item_features: ndarray of shape (n_items, )
-            vector representation for every item.
         """
         self.name = name
         self.df = None
@@ -815,7 +796,7 @@ class CFDataset(Dataset):
 
         Parameters
         ----------
-        user_item_ratings: pandas.DataFrame
+        dataset: pandas.DataFrame
         This dataframe has four columns: userID, itemID, ratings, timestamp
         The userID is a continuous integer between (0, n_users)
         The itemID is a continuous integer between (0, n_items)
@@ -869,6 +850,11 @@ class CFDataset(Dataset):
     def get_item_features(self, dataset_split_ratios):
         """
         Method that creates the dataset for the items.
+        Parameters
+        ----------
+        dataset_split_ratios: dict[DataSplit -> float]
+        Map of data split names and fractions.
+        
         Returns
         -------
         None
@@ -918,9 +904,9 @@ class CFDataset(Dataset):
         """
         item_features_users = self.item_features['userID'].unique()
         dataset = self.df[~self.df['userID'].isin(item_features_users)]
-        transformed_dataset = dataset.sort_values('timestamp').groupby('userID')['itemID'].apply(list).reset_index()
+        transformed_dataset = dataset.sort_values('timestamp').groupby('userID')['itemID'].apply(list).reset_index().rename(columns={"itemID": "interactions"})
         self.df_x = transformed_dataset[['userID']].copy()
-        self.df_y = transformed_dataset[['itemID']].copy()
+        self.df_y = transformed_dataset[['interactions']].copy()
     
     def prepare_target_and_attack_data(
             self,
