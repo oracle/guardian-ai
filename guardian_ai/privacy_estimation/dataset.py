@@ -784,8 +784,14 @@ class CFDataset(Dataset):
         df: dataframe with 4 columns: userID, itemID, rating, timestamp.
         df_x: darray of shape (n_users),
             where ``n_users`` is the number of users.
-        df_y: ndarray of shape (n_users, )
-            where ``n_users`` is the number of users, which lists out the items that the user interacted with.
+        df_y: ndarray of shape (n_users, n_items)
+            where ``n_users`` is the number of users and ``n_items`` is the number of items
+            This parameter represents a 2D array where `n_users` is the number of users and
+            `n_items` is the number of items. The array stores ratings that users have given to items,
+            with the position (i, j) indicating the rating user i has given to item j.
+            If a user has not interacted with an item, the corresponding value is set to 0.
+            For example, if a user has rated items 1, 3, and 5 with ratings of 4, 5, and 1 respectively,
+            their corresponding row in the array would look like [0, 4, 0, 5, 0, 1, ...].
         item_features: ndarray of shape (n_items, )
             vector representation for every item.
         """
@@ -814,17 +820,7 @@ class CFDataset(Dataset):
         None
 
         """
-        pivot_table = dataset.pivot(index="userID", columns="itemID", values="rating").fillna(0)
-        unique_item_ids = sorted(dataset['itemID'].unique())
-        pivot_table = pivot_table.reindex(columns=unique_item_ids, fill_value=0)
-        dataset = pd.DataFrame(
-            {
-                'userID': pivot_table.index,
-                'interactions': pivot_table.values.tolist()
-            }
-        )
-        self.df_x = dataset[['userID']].copy()
-        self.df_y = dataset[['interactions']].copy()
+        self.df = dataset.copy()
     
     def load_data(self, source_file,
                   contains_header: bool = False,
@@ -852,21 +848,21 @@ class CFDataset(Dataset):
         """
         if source_file.endswith(".csv"):
             if contains_header:
-                df = pd.read_csv(
+                dataframe = pd.read_csv(
                     source_file, sep=",", skiprows=1, header=None, encoding="utf-8"
                 )  # ignore the headers, especially when reading lots of datasets.
             else:
-                df = pd.read_csv(source_file, sep=",", header=None, encoding="utf-8")
+                dataframe = pd.read_csv(source_file, sep=",", header=None, encoding="utf-8")
         elif source_file.endswith(".arff"):
             data = arff.loadarff(source_file)
-            df = pd.DataFrame(data[0])
+            dataframe = pd.DataFrame(data[0])
         else:
             raise ValueError
         
-        df = pd.DataFrame(df, columns=['userID', 'itemID', 'rating', 'timestamp']).astype(int)
-        self.load_data_from_df(df)
+        dataframe = pd.DataFrame(dataframe, columns=['userID', 'itemID', 'rating', 'timestamp']).astype(int)
+        self.load_data_from_df(dataframe)
     
-    def get_item_features(self):
+    def get_item_features(self, dataset_split_ratios):
         """
         Method that creates the dataset for the items.
         Returns
@@ -877,8 +873,7 @@ class CFDataset(Dataset):
         # extract all the items
         unique_users = self.df['userID'].unique()
         unique_items = self.df['itemID'].unique()
-        selected_users = np.random.choice(unique_users, size=int(len(unique_users) * float(CFDataSplit.ITEM_DATASET)),
-                                          replace=False)
+        selected_users = np.random.choice(unique_users, size=int(len(unique_users) * dataset_split_ratios[CFDataSplit.ITEM_DATASET.name]))
         # Filter the DataFrame to include only selected users
         filtered_df = self.df[self.df['userID'].isin(selected_users)]
         missing_items = set(unique_items) - set(filtered_df['itemID'])
@@ -900,7 +895,7 @@ class CFDataset(Dataset):
         the vector representation of the items
 
         """
-        R_df = self.df.pivot(index='userID', columns='itemID', values='rating')
+        R_df = self.item_features.pivot(index='userID', columns='itemID', values='rating')
         R_df = R_df.fillna(R_df.mean())
         mtrx = R_df.to_numpy()
         ratings_mean = np.mean(mtrx, axis=1)
