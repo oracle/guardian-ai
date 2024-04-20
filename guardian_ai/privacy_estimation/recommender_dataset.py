@@ -1,57 +1,64 @@
 import pandas as pd
+from typing import List
+from dataset import Dataset
+from sklearn.decomposition import NMF
+import numpy as np
+from scipy import sparse
+from scipy.sparse.linalg import svds
 
-# Implementation of matrix factorization for recommender inference attack featurization.
-class RecommenderDataSplit(Enum):
-    ATTACK_TRAIN_IN = 0
-    ATTACK_TRAIN_OUT = 1
-    ATTACK_TEST_IN = 2
-    ATTACK_TEST_OUT = 3
-    TARGET_TRAIN = 4
-    TARGET_VALID = 5
-    TARGET_TEST = 6
-    SHADOW_TRAIN = 7
-    SHADOW_VALID = 8
-    SHDAOW_TEST = 9
+
 
 class RecommenderDataset(Dataset):
-    def __init__(self, name, df_x=None, df_y=None):
-        self.df_x = df_x
-        self.df_y = df_y
-        self.column_transformer = None
-        self.label_encoder = None
+    def __init__(self, name):
+        self.users = None
+        self.items = None
+        self.ratings = None
         self.target_model_data = None
-        self.attack_model_data = None
+        self.shadow_model_data = None
         super(RecommenderDataset, self).__init__(name)
-        print(df_x)
-    
+
+    @staticmethod
+    def load_csv_or_dat(file, sep='', columns=None, data_encoding=None):
+            if file[-4:] == '.csv':
+                loaded_df = pd.read_csv(
+                    file, sep=",", skiprows=1, header=None, encoding="utf-8"
+                )
+            elif file[-4:] == '.dat':
+                loaded_data = [i.strip().split("::") for i in open(file, 'r', encoding=data_encoding).readlines()]
+                loaded_df =  pd.DataFrame(loaded_data, columns=columns)
+            else:
+                return ValueError("Acceptable file types for users are .csv and .dat")
+            return loaded_df
+
     def load_data(
         self,
-        source_file,
-        contains_header: bool = False,
-        target_ix: int = None,
-        ignore_ix: List[int] = None,
+        users_file,
+        items_file,
+        ratings_file,
     ):
-  
-        df = pd.read_csv(
-            source_file, sep=",", skiprows=1, header=None, encoding="utf-8"
-        )
-        y_ix = target_ix if target_ix is not None else len(df.columns) - 1
-        self.df_y = df.iloc[:, y_ix]
-        if isinstance(self.df_y[0], bytes):
-            self.df_y = self.df_y.str.decode("utf-8")
-        self.df_x = df.drop(df.columns[y_ix], axis=1)
+       self.items = self.load_csv_or_dat(items_file, data_encoding='latin-1', columns=['MovieID', 'Title', 'Genres'])
+       self.items['MovieID'] = self.items['MovieID'].apply(pd.to_numeric)
+       self.ratings = self.load_csv_or_dat(ratings_file, columns=['user_id', 'item_id', 'rating', 'timestamp'])
+       self.ratings = self.ratings.astype(int)
+       self.users = self.load_csv_or_dat(users_file)
+       print("User length: " + str(len(pd.unique(self.ratings['user_id']))))
 
-        # next remove the ones that need to be ignored.
-        if ignore_ix is not None:
-            self.df_x = self.df_x.drop(ignore_ix, axis=1)
-        print(df)
-        
-        def matrix_factorization():
-            return NotImplementedError
+    def perform_matrix_factorization(self, num_components):
+        x = self.ratings[['user_id', 'item_id']].values
+        min_rating = min(self.ratings['rating'])
+        max_rating = max(self.ratings['rating'])
+        y = self.ratings["rating"].apply(lambda x: (x - min_rating) / (max_rating - min_rating)).values
+    
+        R_df = self.ratings.pivot(index = 'user_id', columns ='item_id', values = 'rating')
+        R_df = R_df.fillna(R_df.mean())
 
-        def get_target_features():
-            return NotImplementedError
+        mtrx = R_df.to_numpy()
+        ratings_mean = np.mean(mtrx, axis = 1)
+        R_demeaned = mtrx - ratings_mean.reshape(-1, 1)
+        user_vector, sigma, item_vector_t = svds(R_demeaned, k = num_components)
+
+        return item_vector_t.transpose()
+
+    
         
-        def get_shadow_features():
-            return NotImplementedError
         
