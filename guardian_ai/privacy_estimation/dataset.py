@@ -871,6 +871,18 @@ class CFDataset(Dataset):
         # Add interactions with missing items to the Item Features Dataset
         missing_items_data = self.df[self.df['itemID'].isin(missing_items)]
         self.item_features = pd.concat([filtered_df, missing_items_data]).drop_duplicates()
+
+    def get_num_rows(self):
+            """
+            Get number of rows in the dataset.
+
+            Returns
+            -------
+            int
+                number of rows in the dataset.
+
+            """
+            return self.df.shape[0]
     
     def perform_matrix_factorization(self, num_components):
         """
@@ -989,3 +1001,5 @@ class CFDataset(Dataset):
             y_attack_test,
             y_membership_test,
         )
+
+        
