@@ -66,7 +66,6 @@ class AttackRunner:
         assert self.dataset.attack_model_data is not None
         self.target_models = target_models
         self.shadow_models = shadow_models
-        print (self.shadow_models)
         self.attacks = attacks
         self.threshold_grids = threshold_grids
         self.target_model_result_strings = {}
@@ -303,12 +302,11 @@ class AttackRunner:
             Should we cache the input values - useful for expensive feature
             calculations like the merlin ratio.
         features: List[List[float]]
-            Feature vectors of the items - required when the collaborative filtering model
+            Feature vectors representing the items - required when a recommender model
             is being attacked
         shadow_model: CFModel
-            Trained shadow model that is used to generate the input features of the attack
-            model - required when the collaborative filtering model
-            is being attacked
+            Trained shadow model that is used to generate the input features of an attack
+            model - required when a recommender model is being attacked
 
         Returns
         -------
@@ -335,7 +333,6 @@ class AttackRunner:
         
         # And, get the data needed to run the attack
         attack_model_data: AttackModelData = self.dataset.attack_model_data
-        print (attack_model_data)
         # train the attack
         if attack_type == AttackType.CollaborativeFilteringAttack:
             attack.train_attack_model(

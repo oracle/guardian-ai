@@ -224,15 +224,15 @@ class BlackBoxAttack:
             ``n_features`` is the number of features.
         y_attack: ndarray of shape (n_samples, )
             Vector containing the output labels of the attack data points (not membership label).
-        y_membership: array of shape (n_samples, 1)
-            Vector containing the membership labels.
+        y_membership: array of shape (n_samples,)
+            An array containing the membership labels, where 1 indicates membership in the training set, and
+            0 indicates non-membership.
         split_type: str
             Use information cached from running the loss based and merlin attacks.
         use_cache: bool
             Using the cache or not.
         features: List[List[float]]
-            Feature vectors of the items - required when the collaborative filtering model
-            is being attacked
+             A list of feature vectors representing items. This is required when attacking a recommender model.
         Returns
         -------
         X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)
@@ -282,8 +282,7 @@ class BlackBoxAttack:
             Should we use the feature values from the cache - useful for Morgan
             and Combined attacks.
         features: List[List[float]]
-            Feature vectors of the items - required when the collaborative filtering model
-            is being attacked
+             A list of feature vectors representing items. This is required when attacking a recommender model.
         Returns
         -------
         Trained attack model, usually a binary classifier.
@@ -331,10 +330,12 @@ class BlackBoxAttack:
             where ``n_samples`` is the number of samples and ``n_features`` is the
             number of features.
             Input variables for the attack points. These are the
-            original features (not attack/membership features).
+            original features (not attack/membership features). If a recommender model
+            is under attack, this object is a pandas.DataFrame with a single column named `userID`.
         y_attack: ndarray of shape (n_samples,)
             Output labels for the attack points. These are the
-            original labels (not membership labels).
+            original labels (not membership labels). If a recommender model
+            is under attack, this object is a pandas.DataFrame with a single column named `interactions`.
 
         Returns
         -------
@@ -373,9 +374,12 @@ class BlackBoxAttack:
             number of features.
             Input variables for the dataset on which to run the attack model.
             These are the original features (not attack/membership features).
+            If a recommender model is under attack, this object s a pandas.DataFrame with a
+            single column named `userID`.
         y_attack_test: ndarray of shape (n_samples,)
             Output labels for the dataset on which to run the attack model.
-            These are the original labels (not membership labels).
+            These are the original labels (not membership labels). If a recommender model
+            is under attack, this object is a pandas.DataFrame with a single column named `interactions`.
         y_membership_test: ndarray of shape (n_samples,)
             Membership labels for the dataset on which we want to run
             the attack model. These are binary and indicate whether the data
@@ -396,8 +400,7 @@ class BlackBoxAttack:
             Should we use the feature values from the cache - useful for Morgan
             attack, which uses merlin ratio and loss values.
         features: List[List[float]]
-            Feature vectors of the items - required when the collaborative filtering model
-            is being attacked
+             A list of feature vectors representing items. This is required when attacking a recommender model.
         Returns
         -------
         List[float]
@@ -488,18 +491,21 @@ class LossBasedBlackBoxAttack(BlackBoxAttack):
             Target model being attacked.
         X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
-            ``n_features`` is the number of features.
+            ``n_features`` is the number of features. If a recommender model is under attack, this object
+            is a pandas.DataFrame with a single column named `userID`.
         y_attack: ndarray of shape (n_samples, )
             Vector containing the output labels of the attack data points (not membership label).
-        y_membership: array of shape (n_samples, 1)
-            Vector containing the membership labels.
+            If a recommender model is under attack, this object is a pandas.DataFrame with a single column
+            named `interactions`.
+        y_membership: array of shape (n_samples,)
+            An array containing the membership labels, where 1 indicates membership in the training set, and
+            0 indicates non-membership.
         split_type: str
             Use information cached from running the loss based and merlin attacks.
         use_cache: bool
             Using the cache or not.
         features: List[List[float]]
-            Feature vectors of the items - required when the collaborative filtering model
-            is being attacked
+             A list of feature vectors representing items. This is required when attacking a recommender model.
         Returns
         -------
         X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)
@@ -561,18 +567,21 @@ class ExpectedLossBasedBlackBoxAttack(BlackBoxAttack):
             Target model being attacked.
         X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
-            ``n_features`` is the number of features.
+            ``n_features`` is the number of features. If a recommender model is under attack, this object
+            is a pandas.DataFrame with a single column named `userID`.
         y_attack: ndarray of shape (n_samples, )
             Vector containing the output labels of the attack data points (not membership label).
-        y_membership: array of shape (n_samples, 1)
-            Vector containing the membership labels.
+            If a recommender model is under attack, this object is a pandas.DataFrame with a single
+            column named `interactions`.
+        y_membership: array of shape (n_samples,)
+            An array containing the membership labels, where 1 indicates membership in the training set, and
+            0 indicates non-membership.
         split_type: str
             Use information cached from running the loss based and merlin attacks.
         use_cache: bool
             Using the cache or not.
         features: List[List[float]]
-            Feature vectors of the items - required when the collaborative filtering model
-            is being attacked
+             A list of feature vectors representing items. This is required when attacking a recommender model.
         Returns
         -------
         X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)
@@ -634,18 +643,21 @@ class ConfidenceBasedBlackBoxAttack(BlackBoxAttack):
             Target model being attacked.
         X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
-            ``n_features`` is the number of features.
+            ``n_features`` is the number of features. If a recommender model is under attack, this object
+            is a pandas.DataFrame with a single column named `userID`.
         y_attack: ndarray of shape (n_samples, )
             Vector containing the output labels of the attack data points (not membership label).
-        y_membership: array of shape (n_samples, 1)
-            Vector containing the membership labels.
+            If a recommender model is under attack, this object is a pandas.DataFrame with a single
+            column named `interactions`.
+        y_membership: array of shape (n_samples,)
+            An array containing the membership labels, where 1 indicates membership in the training set, and
+            0 indicates non-membership.
         split_type: str
             Use information cached from running the loss based and merlin attacks.
         use_cache: bool
             Using the cache or not.
         features: List[List[float]]
-            Feature vectors of the items - required when the collaborative filtering model
-            is being attacked
+            A list of feature vectors representing items. This is required when attacking a recommender model.
         Returns
         -------
         X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)
@@ -695,24 +707,27 @@ class ExpectedConfidenceBasedBlackBoxAttack(BlackBoxAttack):
         input variable for the attack. Think of it as feature engineering for building
         the attack model, which is essentially a binary classifier.
 
-                Parameters
+        Parameters
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
             Target model being attacked.
         X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
-            ``n_features`` is the number of features.
+            ``n_features`` is the number of features. If a recommender model is under attack, this object
+            is a pandas.DataFrame with a single column named `userID`.
         y_attack: ndarray of shape (n_samples, )
             Vector containing the output labels of the attack data points (not membership label).
-        y_membership: array of shape (n_samples, 1)
-            Vector containing the membership labels.
+            If a recommender model is under attack, this object is a pandas.DataFrame with a single
+            column named `interactions`.
+        y_membership: array of shape (n_samples,)
+            An array containing the membership labels, where 1 indicates membership in the training set, and
+            0 indicates non-membership.
         split_type: str
             Use information cached from running the loss based and merlin attacks.
         use_cache: bool
             Using the cache or not.
         features: List[List[float]]
-            Feature vectors of the items - required when the collaborative filtering model
-            is being attacked
+            A list of feature vectors representing items. This is required when attacking a recommender model.
         Returns
         -------
         X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)

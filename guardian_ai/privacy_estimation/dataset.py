@@ -47,7 +47,7 @@ class DataSplit(Enum):
 
 class CFDataSplit(Enum):
     """
-    Prepare the data splits. The core concept involves transforming the user-item matrix into per-user data.
+    Prepare the data splits. The main idea here involves transforming the user-item matrix into per-user data.
     For each user, we enumerate the items they have interacted with. We'll then select a portion of this
     transformed dataset to train a shadow model. The shadow model's outputs will serve to train the
     attack model for both members and non-members (attack_train_in and attack_train_out). This approach
@@ -58,12 +58,11 @@ class CFDataSplit(Enum):
     the target model will be utilized to assess the attack model as well. Moreover, a subset of the transformed
     data is required to generate item vector representations (item_dataset), with the stipulation that this
     subset encompasses all items included in both the target and shadow datasets. It's important to first execute
-    these detailed splits before merging them to form the appropriate training and testing sets for the target
-    and attack models.
+    these detailed splits before merging them to form the appropriate training sets for the target and attack
+    models.
     
-    This is a convenience class for specifying the data split ratios. This works for the attacks
-    implemented currently, but we can change or use another split for future attacks.
-    This is why the Dataset class implements more general data splitting and merging functions.
+    This is a convenience class for specifying the data split ratios. This works for the recommender
+    attacks only.
     """
     ATTACK_TRAIN_IN = 0
     ATTACK_TRAIN_OUT = 1
@@ -119,7 +118,7 @@ class TargetModelData:
 class TargetCFData:
     """
     Convenience class to easily pass around the dataset prepared for training and testing
-    the target model
+    the target recommender model
     """
     
     def __init__(
@@ -130,21 +129,24 @@ class TargetCFData:
             y_target_non_members,
     ):
         """
-        Create Target Model Data
-        All X variables are {array-like, sparse matrix} of shape (n_samples, n_features),
-        where ``n_users`` is the number of users.
+        Create Target Model Data. This dataset includes data on both members (data points used in training the
+        target model) and non-members (data points not used in training the target model), facilitating
+        the evaluation of membership inference attacks.
 
         Parameters
         ----------
-        X_target_members: pd.DataFrame with a single column `userID`
-            List of users used to train the target model.
-        y_target_members: pd.Dataframe with a single column `interactions`
-            List of items each input user interacted with.
-        X_target_non_members: pd.DataFrame with a single column `userID`
-            List of cold-start users.
-        y_target_non_members: pd.Dataframe with a single column `interactions`
-            List of items the cold-start users interacted with.
-
+        X_target_members: pd.DataFrame
+            A DataFrame with a single column `userID`, representing users who are members
+            of the target model's training dataset.
+        y_target_members: pd.DataFrame
+            A DataFrame with a single column `interactions`, detailing the items that each
+            member user has interacted with.
+        X_target_non_members: pd.DataFrame
+            A DataFrame with a single column `userID`, representing users who are not members
+            of the target model's training dataset (cold-start users).
+        y_target_non_members: pd.DataFrame
+            A DataFrame with a single column `interactions`, detailing the items that each
+            non-member (cold-start) user has interacted with.
         """
         self.X_target_members = X_target_members
         self.X_target_non_members = X_target_non_members
@@ -797,9 +799,7 @@ class CFDataset(Dataset):
         Parameters
         ----------
         dataset: pandas.DataFrame
-        This dataframe has four columns: userID, itemID, ratings, timestamp
-        The userID is a continuous integer between (0, n_users)
-        The itemID is a continuous integer between (0, n_items)
+             The dataframe has four columns: userID, itemID, ratings, timestamp
         Returns
         -------
         None
@@ -812,7 +812,15 @@ class CFDataset(Dataset):
                   target_ix: int = None,
                   ignore_ix: List[int] = None, ):
         """
-        Method that specifies how the data should be loaded. Mainly applicable for tabular data.
+        Loads tabular data from a specified file, intended for use in collaborative filtering or other recommendation
+        systems algorithms. This method assumes that the provided dataset has user IDs and item IDs that are continuous
+        and start from zero.
+
+        The function is capable of handling datasets in formats such as CSV and ARFF, with customizable options for
+        whether the data includes a header row, specifying the index of a target variable, and identifying any
+        indices of columns to be ignored. The method is designed with the expectation that user IDs and item IDs
+        are already appropriately formatted in the dataset, thus eliminating the need for additional preprocessing
+        steps to reindex these identifiers.
 
         Parameters
         ----------
@@ -827,9 +835,19 @@ class CFDataset(Dataset):
 
         Returns
         -------
-        pandas dataframe of shape (n_samples, n_feature), pandas df of shape (n_samples,)
-            Input features and output labels.
+        None
+        This method does not return any value. Instead, it processes the data and loads it into the instance
+        for further use, such as training a model. The processing step includes interpreting specific columns
+        as user IDs, item IDs, ratings, and timestamps, and converting these to integer types.
 
+        Notes
+        -----
+        - It is a prerequisite that the dataset provided by the user has user IDs and item IDs that are continuous
+          and zero-indexed. This allows for the direct use of these identifiers in recommendation algorithms without
+          further manipulation.
+        - The method assumes the dataset contains columns for user IDs, item IDs, ratings, and timestamps, in that
+          order, after any specified columns have been ignored. Adjustments should be made if the dataset structure
+          differs.
         """
         if source_file.endswith(".csv"):
             if contains_header:
@@ -849,7 +867,11 @@ class CFDataset(Dataset):
     
     def get_item_features(self, dataset_split_ratios):
         """
-        Method that creates the dataset for the items.
+        Prepares a dataset intended for generating item feature vectors.This method selects a subset
+        of users based on specified dataset split ratios, then constructs a dataset that includes
+        interactions from these selected users, along with any items that would otherwise be missing
+        from the dataset to ensure all the items are covered.
+        
         Parameters
         ----------
         dataset_split_ratios: dict[DataSplit -> float]
@@ -860,43 +882,45 @@ class CFDataset(Dataset):
         None
 
         """
-        # extract all the items
         unique_users = self.df['userID'].unique()
         unique_items = self.df['itemID'].unique()
         selected_users = np.random.choice(unique_users, size=int(
-            len(unique_users) * 0.3))  # * dataset_split_ratios[CFDataSplit.ITEM_DATASET.name]))
-        # Filter the DataFrame to include only selected users
+            len(unique_users) * dataset_split_ratios[CFDataSplit.ITEM_DATASET]))
         filtered_df = self.df[self.df['userID'].isin(selected_users)]
         missing_items = set(unique_items) - set(filtered_df['itemID'])
-        # Add interactions with missing items to the Item Features Dataset
         missing_items_data = self.df[self.df['itemID'].isin(missing_items)]
         self.item_features = pd.concat([filtered_df, missing_items_data]).drop_duplicates()
 
     def get_num_rows(self):
-            """
-            Get number of rows in the dataset.
+        """
+        Get number of rows in the dataset.
 
-            Returns
-            -------
-            int
-                number of rows in the dataset.
+        Returns
+        -------
+        int
+            number of rows in the dataset.
 
-            """
-            return self.df.shape[0]
+        """
+        return self.df.shape[0]
     
     def perform_matrix_factorization(self, num_components):
         """
-        Method that computes the vector representations of the items.
+        Performs matrix factorization using Singular Value Decomposition (SVD) to compute vector representations
+        of items in the dataset. This method transforms the user-item interactions into a matrix, normalizes
+        the ratings by subtracting the mean rating for each user, and then applies SVD to derive latent vectors
+        for items. The number of latent factors (components) is specified by the num_components parameter.
 
         Parameters
         ----------
-        num_components: int
-        number of components in singular value decomposition
+        num_components : int
+            The number of latent factors to extract, which corresponds to the number of singular values and vectors
+            to compute in the SVD. This determines the dimensionality of the resulting item vector space.
+
         Returns
         -------
-        item_vector_t.transpose(): ndarray of shape (n_items, n_components)
-        the vector representation of the items
-
+        ndarray
+            An array of shape (n_items, n_components) containing the vector representations of the items. Each row
+            represents an item, and each column represents one dimension in the latent feature space.
         """
         R_df = self.item_features.pivot(index='userID', columns='itemID', values='rating')
         R_df = R_df.fillna(R_df.mean())
@@ -908,11 +932,18 @@ class CFDataset(Dataset):
     
     def create_shadow_target_dataset(self):
         """
-        Method that creates the target and shadow datasets.
+        Separates the original dataset into target and shadow datasets based on user interactions. This method
+        identifies users present in the `item_features` dataset, then excludes these users to form a new dataset.
+        The resulting dataset is then transformed to aggregate interactions by user, creating a list of item IDs
+        per user.
+
+        The method updates the instance by creating two new DataFrame attributes:
+        - `df_x`: Contains user IDs, serving as the feature set.
+        - `df_y`: Contains lists of item interactions per user.
+
         Returns
         -------
         None
-
         """
         item_features_users = self.item_features['userID'].unique()
         dataset = self.df[~self.df['userID'].isin(item_features_users)]
@@ -946,8 +977,7 @@ class CFDataset(Dataset):
         self.split_dataset(data_split_seed, data_split_ratios, data_split_names)
         
         """
-        Merge appropriate splits to create the train set for the target model. Also fit data
-        encoders on this training set, and encode the target train and test sets.
+        Merge appropriate splits to create the train set for the target model.
         """
         X_shadow_members, y_shadow_members = self.splits[CFDataSplit.ATTACK_TRAIN_IN.name]
         X_shadow_non_members, y_shadow_non_members = self.splits[CFDataSplit.ATTACK_TRAIN_OUT.name]

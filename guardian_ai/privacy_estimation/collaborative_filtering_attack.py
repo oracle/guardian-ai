@@ -10,9 +10,9 @@ from guardian_ai.privacy_estimation.recommender_model import CFModel
 class CFAttack(BlackBoxAttack):
     """
     This is the base class for the collaborative filtering model attack. It has a base estimator,
-    which is a binary classifier that decides whether an attack data point was part of the original training data for the target model
-    or not. It's black box because this type of attack can only access the prediction API of
-    the target model and does not have access to the model parameters.
+    which is a binary classifier that decides whether an attack data point was part of the
+    original training data for the target model or not. It's black box because this type of attack
+    can only access the prediction API of the target model and does not have access to the model parameters.
     """
     
     def __init__(
@@ -67,19 +67,19 @@ class CFAttack(BlackBoxAttack):
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
             Target model being attacked.
-        X_attack: 1-d array of shape (n_samples)
-            Input user ids of the attack datapoints, where ``n_samples`` is the number of users
-        y_attack: ndarray of shape (n_samples, n_items)
-            Vector containing the output labels of the attack data points (not membership label).
-        y_membership: array of shape (n_samples, 1)
-            Vector containing the membership labels.
+        X_attack: pd.DataFrame
+            pd.DataFrame containing a single column ``userID`` with user ids.
+        y_attack: pd.DataFrame
+            pd.DataFrame containing a single column ``interactions`` with items that the user interacted with.
+        y_membership: array-like of shape (n_samples,)
+            An array containing the membership labels, where 1 indicates membership in the training set, and 0
+            indicates non-membership.
         split_type: str
             Use information cached from running the loss based and merlin attacks.
         use_cache: bool
             Using the cache or not.
         features: List[List[float]]
-            Feature vectors of the items - required when the collaborative filtering model
-            is being attacked
+            A list of feature vectors representing items. This is required when attacking a recommender model.
         Returns
         -------
         X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)
@@ -115,7 +115,7 @@ class CFAttack(BlackBoxAttack):
             interaction_vector = np.mean([features[m] for m in items], axis=0)
             recommendation_vector = np.zeros(len(features[0]))
             for j in recommendations:
-                weight = top_k - j  # Weight decreases as rank increases
+                weight = top_k - j
                 recommendation_vector += weight * features[j]
             recommendation_vector /= sum(range(1, top_k + 1))
             vector_shadow = [i - w for i, w in zip(interaction_vector, recommendation_vector)]

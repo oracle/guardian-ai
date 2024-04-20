@@ -21,6 +21,7 @@ class CFModel:
     def __init__(self, top_k, batch_size, epochs, lr):
         """
         Create the target model that is being attacked.
+        
         Parameters
         ----------
         top_k: top k recommendations
@@ -45,29 +46,46 @@ class CFModel:
     @abstractmethod
     def get_model(self, num_users, num_items):
         """
-        Get the appropriate model object.
+        Retrieves an instance of the model configured for a specified number of users and items.
+
         Parameters
         ----------
-        num_users: number of users
-        num_items: number of items
+        num_users : int
+            The number of users.
+        num_items : int
+            The number of items.
+
         Returns
         -------
-        Model that is not yet trained.
+        object
+            An untrained model instance configured for the given numbers of users and items.
         """
         pass
     
     def create_index_map(self, X, y):
         """
-        Returns the dictionaries that map the original indices to continuous indices
+        Generates mappings from original indices to continuous indices for users and items.
+
         Parameters
         ----------
-        X: pandas.DataFrame with a single column `userID`.
-        y: pandas.DataFrame with a single column `interactions` that contains the list of items the user interacted with
-        
-        Returns
+        X : pandas.DataFrame
+            A dataframe with a single column `userID` representing user identifiers.
+        y : pandas.DataFrame
+            A dataframe with a single column `interactions` that contains lists of
+            item identifiers each user interacted with.
+
+         Returns
         -------
-        user_map: dictionary that maps the original user ids to continuous user ids
-        item_map: dictionary that maps the original item ids to continuous item ids
+        user_map : dict
+            A dictionary that maps original user IDs to continuous, zero-indexed user IDs.
+        item_map : dict
+            A dictionary that maps original item IDs to continuous, zero-indexed item IDs.
+
+        Notes
+        -----
+        - The function assumes that `X` and `y` are aligned such that the i-th row in each corresponds to the same user.
+        - This function also updates the instance attributes `num_users` and `num_items` based on the unique counts of
+          users and items, respectively.
         """
         user_ids = sorted(X.userID.unique())
         exploded_df = y.explode('interactions').rename(columns={"interactions": "itemID"})
@@ -76,23 +94,36 @@ class CFModel:
                     {index: original_id for index, original_id in enumerate(user_ids)}]
         item_map = [{original_id: index for index, original_id in enumerate(item_ids)},
                     {index: original_id for index, original_id in enumerate(item_ids)}]
-        print(item_map[0])
         self.num_users = X.userID.nunique()
         self.num_items = exploded_df['itemID'].nunique()
-        print(self.num_users, self.num_items)
         return user_map, item_map
     
     def reindex(self, X, y):
         """
-        Transforms the dataset
+        Transforms the dataset by mapping original user and item identifiers to continuous indices.
+
+        This function applies the mappings created by `create_index_map` to convert the original
+        user and item identifiers in the input dataframes `X` and `y` into continuous, zero-indexed identifiers.
+
         Parameters
         ----------
-        X: pandas.DataFrame with a single column `userID`.
-        y: pandas.DataFrame with a single column `interactions` that contains the list of items the user interacted with
+        X : pandas.DataFrame
+            A dataframe with a single column `userID` representing user identifiers.
+        y : pandas.DataFrame
+            A dataframe with a single column `interactions` that contains lists of item
+            identifiers each user interacted with.
 
         Returns
         -------
-        df_reindex: pandas.DataFrame containing the continuous user ids and the items ids
+        df_reindex : pandas.DataFrame
+            A dataframe with two columns, `userID` and `itemID`, containing the continuous
+            indices for users and items, respectively. Each row represents an interaction
+            between a user and an item.
+
+        Notes
+        -----
+        The resulting `df_reindex` dataframe will have a row for each user-item interaction,
+        effectively 'exploding' lists found in `y`.
         """
         user_map, item_map = self.create_index_map(X, y)
         temp_df = pd.concat([X, y], axis=1)
@@ -100,21 +131,29 @@ class CFModel:
         df_reindex.reset_index(drop=True, inplace=True)
         df_reindex['userID'] = df_reindex['userID'].apply(lambda x: user_map[0][x])
         df_reindex['itemID'] = df_reindex['itemID'].apply(lambda x: item_map[0][x])
-        print(df_reindex)
         return df_reindex
     
     @staticmethod
     def leave_one_out(dataframe):
         """
-        leave-one-out evaluation protocol to create the test dataset
+        Splits the input dataframe into training and testing datasets using the leave-one-out evaluation protocol.
+
+        For each user, all but one of the interactions are included in the training dataset, and the remaining
+        interaction is used for testing. This method ensures that each user is represented in both the training
+        and testing datasets.
+
         Parameters
         ----------
-        dataframe: pandas.DataFrame containing user ids and items ids.
-        
+        dataframe : pandas.DataFrame
+            A dataframe containing at least two columns: `userID` for user
+            identifiers and `itemID` for item identifiers.
+
         Returns
         -------
-        train_df: pandas.DataFrame containing the training dataset
-        test_df: pandas.DataFrame containing the test dataset
+        train_df : pandas.DataFrame
+            The training dataset, containing all but one interaction per user.
+        test_df : pandas.DataFrame
+            The testing dataset, containing exactly one interaction per user.
         """
         train_df = pd.DataFrame(columns=['userID', 'itemID'])
         test_df = pd.DataFrame(columns=['userID', 'itemID'])
@@ -126,19 +165,27 @@ class CFModel:
     @staticmethod
     def negative_sampling(train, test):
         """
-        Adds a column that consists the list of items that the user did not interact with.
-        In the test dataset, this list also includes the one item that was removed from the
-        training dataset during LOOCV protocol.
+        Enhances the training and test datasets with negative sampling.
+
+        For the training dataset, this involves adding a list of items each user has not interacted with.
+        For the test dataset, the non-interacted items list also includes the item withheld during the leave-one-out
+        cross-validation (LOOCV) process, ensuring it is considered as a potential negative example.
+
         Parameters
         ----------
-        train: pandas.DataFrame containing training dataset
-        test: pandas.DataFrame containing test dataset
-        
-        Return
-        ----------
-        tuple: A tuple containing two pandas.DataFrame objects
-            - the first dataframe contains the training dataset with columns userId, interactions, negatives
-            - the second dataframe contains the test dataset with columns userId, itemId, sampled_negatives
+        train : pandas.DataFrame
+            The training dataset containing columns 'userID' and 'itemID' for interactions.
+        test : pandas.DataFrame
+            The test dataset containing columns 'userID' and 'itemID', where 'itemID' is the item withheld during LOOCV.
+
+        Returns
+        -------
+        tuple
+            A tuple containing two pandas.DataFrame objects:
+            - The first DataFrame includes the training dataset augmented with a 'negatives' column, listing items
+            not interacted with by each user.
+            - The second DataFrame augments the test dataset with a 'sampled_negatives' column, which includes a
+            sample of non-interacted items for each user, ensuring the withheld item is also considered.
         """
         items = set(train.itemID.tolist())
         train_negatives = (
@@ -162,12 +209,30 @@ class CFModel:
     
     def train_test_split(self, df_reindex):
         """
-        Split the dataframe into train and test datasets.
-        Return
+        Splits the reindexed dataframe into training and testing datasets using a leave-one-out approach.
+        The negative sampling process adds non-interacted items to both datasets for model training and
+        evaluation purposes.
+
+        This method first applies the leave-one-out strategy to ensure each user is represented in both the
+        training and testing datasets. It then performs negative sampling to identify items not interacted with
+        by users. The process ensures the training dataset includes user-item interactions and their corresponding
+        negative samples, while the test dataset includes a single withheld interaction per user and a sampled
+        set of negatives that includes the withheld item.
+
+        Parameters
         ----------
-        tuple: A tuple containing two pandas.DataFrame objects
-            - the first dataframe contains the training dataset with columns userId, interactions, negatives
-            - the second dataframe contains the test dataset with columns userId, itemId, sampled_negatives
+        df_reindex : pandas.DataFrame
+            The preprocessed dataframe with continuous user and item IDs, ready for splitting and negative sampling.
+
+        Returns
+        -------
+        tuple
+            A tuple containing two pandas.DataFrame objects:
+            - The first DataFrame, representing the training dataset, includes columns 'userID', 'interactions'
+              (positive samples), and 'negatives' (negative samples).
+            - The second DataFrame, representing the test dataset, includes columns 'userID', 'itemID'
+              (the single withheld positive sample per user), and 'sampled_negatives' (a sampled set of negative items
+              that includes the withheld positive item, simulating a recommendation scenario).
         """
         train, test = self.leave_one_out(df_reindex)
         assert train.userID.nunique() == test.userID.nunique()
@@ -177,14 +242,23 @@ class CFModel:
     
     def get_train_instance(self, train_negatives):
         """
-        Returns a PyTorch Dataloader for the training dataset.
+        Prepares and returns a DataLoader for the training dataset suitable for PyTorch models.
+
+        This method processes the input DataFrame to structure the training data in a format compatible
+        with PyTorch, facilitating batch processing during model training. It involves converting the
+        training dataset, which includes user-item interactions and their corresponding negative samples,
+        into a DataLoader object that efficiently handles data loading and batching operations.
+
         Parameters
         ----------
-        train_negatives: pandas.DataFrame containing the training dataset
-        
+        train_negatives : pandas.DataFrame
+            A DataFrame containing the training dataset. This dataset should include columns for user IDs,
+            item IDs for positive interactions, and a column for negative sample IDs (items not interacted with).
+
         Returns
         -------
         torch.utils.data.DataLoader
+            A DataLoader instance that provides iterable access to the dataset, formatted for training a PyTorch model.
         """
         users, items, ratings = [], [], []
         for index, row in train_negatives.iterrows():
@@ -206,16 +280,31 @@ class CFModel:
     
     def metrics(self, test_negatives):
         """
-        Compute metrics on the test dataset.
+        Calculates evaluation metrics for the recommendation model on a test dataset. Specifically, it computes
+        the mean hit rate (HR) and the mean normalized discounted cumulative gain (NDCG) to assess the model's
+        performance. The HR measures the proportion of times the true item (the one user interacted with) is
+        among the top-k recommended items. The NDCG accounts for the position of the true item in the ranked list
+        of recommendations, providing higher scores for hits at higher ranks.
+
+        Each row in the test_negatives DataFrame should include a userID, the itemID of the withheld item, and
+        a list of sampled_negatives, which includes the withheld item along with a sample of items not interacted with
+        by the user. The method iterates over each user in the test dataset, predicts the scores for the sampled negative
+        items (including the withheld item), and calculates the HR and NDCG based on these predictions.
 
         Parameters
         ----------
-        test_negatives: pandas.DataFrame containing the test dataset
-        
+        test_negatives : pandas.DataFrame
+            The test dataset containing columns 'userID', 'itemID', and 'sampled_negatives'. The 'sampled_negatives'
+            column should include a list of item IDs representing the negative samples and the withheld positive sample.
+
         Returns
         -------
-        hr_mean: the mean hit rate
-        ndcg_mean: the mean normalized discounted cumulative gain
+        hr_mean : float
+            The mean hit rate across all users in the test dataset, indicating the fraction of times the withheld item
+            was correctly recommended within the top-k items.
+        ndcg_mean : float
+            The mean normalized discounted cumulative gain across all users, measuring the model's ability to rank
+            the withheld item highly among the recommended items.
 
         """
         HR = []
@@ -239,18 +328,31 @@ class CFModel:
     
     def train_model(self, train_negatives, test_negatives):
         """
-        Trains the model that is being attacked.
+        Trains the recommendation model using the provided training dataset and evaluates its performance
+        on the test dataset. After each epoch, the model's performance is evaluated using the test dataset
+        to calculate metrics such as hit rate (HR) and normalized discounted cumulative gain (NDCG).
 
         Parameters
         ----------
-        train_negatives: pandas.DataFrame containing the training dataset
-        test_negatives: pandas.DataFrame containing the test dataset
+        train_negatives : pandas.DataFrame
+            A DataFrame containing the training dataset, with user-item interactions and negative samples.
+        test_negatives : pandas.DataFrame
+            A DataFrame containing the test dataset, with user-item interactions and a set of sampled negatives
+            for each user, used for model evaluation.
+
         Returns
         -------
         None
+            This method does not return any value but outputs the training progress and evaluation metrics
+            to the console.
 
+        Notes
+        -----
+        - The training and test DataFrames must include columns for 'userID', 'itemID', and 'label' for the
+          training set, where 'label' indicates whether the interaction is positive or negative.
+        - The 'test_negatives' DataFrame should include a 'sampled_negatives' column that lists the negative
+          item IDs considered for each user in the test set, alongside the actual item ID the user interacted with.
         """
-        print(self.num_users, self.num_items)
         self.model = self.get_model(self.num_users + 1, self.num_items + 1)
         train_loader = self.get_train_instance(train_negatives)
         loss_function = nn.BCELoss()
@@ -273,17 +375,35 @@ class CFModel:
     
     def get_predictions_user(self, all_items_mapped, user_id, items_id):
         """
-        Gets model prediction for a single user.
+        Generates a list of recommended items for a single user based on model predictions. This function
+        first identifies items not yet rated by the user, then predicts the user's rating for these items using
+        the trained model. It returns the top-k items with the highest predicted ratings, where k is defined
+        externally (e.g., as a property of the class).
+
+        The function is designed for use with models that generate predictions for individual user-item pairs.
+        The output is a list of item IDs recommended for the user, sorted by the model's prediction scores
+        in descending order.
 
         Parameters
         ----------
-        all_items_mapped: List of all item ids.
-        user_id: An integer representing the user id.
-        items_id: List of item ids that the user interacted with.
-        
+        all_items_mapped : List[int]
+            A list of all item IDs in the dataset, representing the entire set of items that can be recommended.
+        user_id : int
+            The ID of the user for whom recommendations are to be generated.
+        items_id : List[int]
+            A list of item IDs that the user has already interacted with.
+
         Returns
         -------
-        sorted_predictions_reindex: List of items recommended to the user.
+        sorted_predictions_reindex : List[int]
+            A list of item IDs recommended to the user, sorted by the model's prediction scores in descending order.
+            The length of this list is determined by the model's top_k attribute.
+
+        Notes
+        -----
+        - This method assumes that `all_items_mapped` includes all possible item IDs that could be recommended.
+        - `items_id` should include only those item IDs that the user has already interacted with, to exclude them
+          from the recommendations.
         """
         items_not_rated = [i for i in all_items_mapped if i not in items_id]
         user_list = [user_id] * len(items_not_rated)
@@ -321,18 +441,35 @@ class CFModel:
     
     def get_most_popular(self, all_items, interactions):
         """
-        Recommends the most popular items to the user excluding the items that the user
-        interacted with.
+        Identifies and returns the most popular items across all users, excluding those already interacted with
+        by a specific user. Popularity is determined by the number of interactions an item has received. This method
+        can be used to generate baseline recommendations based on item popularity, ensuring that recommended items
+        are not among those the user has previously interacted with.
 
         Parameters
         ----------
-        all_items: pandas.DataFrame containing list of item ids that the user interacted with
-        interactions: List of item ids that a user interacted with
-        
+        all_items : pandas.DataFrame
+            A DataFrame containing all item interactions in the dataset. It should have at least one column that
+            lists item IDs, which this method will explode to count interactions per item. This column must be
+            named 'interactions' before calling this method.
+        interactions : List[int]
+            A list of item IDs that the specific user has interacted with. These items will be excluded from the
+            recommendations.
+
         Returns
         -------
-        top_recommendations: List of top_k most popular recommendations sans the items the user has already interacted
-        with.
+        top_recommendations : List[int]
+            A list of the top_k most popular item IDs recommended to the user, excluding those the user has
+            already interacted with. The number of recommendations returned is determined by the class attribute
+            `top_k`.
+
+        Notes
+        -----
+        - The `all_items` DataFrame is expected to potentially contain multiple rows per item, where each row
+          represents an interaction with the item. The method calculates item popularity based on the count
+          of these interactions.
+        - The `interactions` parameter should accurately reflect the user's history to ensure meaningful
+          recommendations are generated.
         """
         all_items_df = all_items.explode('interactions').rename(columns={"interactions": "itemID"})
         item_popularity = all_items_df['itemID'].value_counts().reset_index()
