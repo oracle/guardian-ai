@@ -16,6 +16,7 @@ class RecommenderDataset(Dataset):
         self.ratings = None
         self.target_model_data = None
         self.shadow_model_data = None
+        self.attack_model_data = None
         super(RecommenderDataset, self).__init__(name)
 
     @staticmethod
