@@ -17,6 +17,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler, OneHotEncoder
+from scipy.sparse.linalg import svds
 
 
 class DataSplit(Enum):
@@ -35,7 +36,6 @@ class DataSplit(Enum):
     This is why the Dataset class implements more general data splitting and merging functions.
 
     """
-
     ATTACK_TRAIN_IN = 0
     ATTACK_TRAIN_OUT = 1
     ATTACK_TEST_IN = 2
@@ -45,20 +45,49 @@ class DataSplit(Enum):
     TARGET_TEST = 6
 
 
+class CFDataSplit(Enum):
+    """
+    Prepare data splits. The main idea here is that we need to transform the user-item matrix
+    into per-user data, where for a single user, we list out the items that the user interacted
+    with. We will then carve out a subset of the transformed dataset to train a shadow model. The
+    outputs from the shadow model will be used to train the attack model for both members and
+    non-members (attack_train_in and attack_train_out), which is why we have not declared additional
+    variables for the shadow model training. A subset of the transformed dataset will be used
+    to train the target model (target_train_members and target_non_members). For both the shadow
+    and target model training, we use the leave out one cross-validation method to test the model, which
+    is why we do not need to create datasets for testing the shadow and target models. The datasets
+    used for training the target model will also be used to test the attack model. Additionally,
+    we also need a subset of the transformed data to create the item vector representations (item_dataset). The only
+    constraint is that this subset should contain all the items present in the target and shadow datasets.
+    Note that we first do these finer granularity splits, and then merge them to form the appropriate
+    train and test sets for the target model and the attack model.
+
+    This is a convenience class for specifying the data split ratios. This works for the attacks
+    implemented currently, but we can change or use another split for future attacks.
+    This is why the Dataset class implements more general data splitting and merging functions.
+
+    """
+    ATTACK_TRAIN_IN = 0
+    ATTACK_TRAIN_OUT = 1
+    TARGET_TRAIN_MEMBERS = 2
+    TARGET_NON_MEMBERS = 3
+    ITEM_DATASET = 4
+
+
 class TargetModelData:
     """
     Convenience class to easily pass around the dataset prepared for training and testing
     the target model
     """
-
+    
     def __init__(
-        self,
-        X_target_train,
-        y_target_train,
-        X_target_valid,
-        y_target_valid,
-        X_target_test,
-        y_target_test,
+            self,
+            X_target_train,
+            y_target_train,
+            X_target_valid,
+            y_target_valid,
+            X_target_test,
+            y_target_test,
     ):
         """
         Create Target Model Data
@@ -89,20 +118,56 @@ class TargetModelData:
         self.y_target_test = y_target_test
 
 
+class TargetCFData:
+    """
+    Convenience class to easily pass around the dataset prepared for training and testing
+    the target model
+    """
+    
+    def __init__(
+            self,
+            X_target_members,
+            y_target_members,
+            X_target_non_members,
+            y_target_non_members
+    ):
+        """
+        Create Target Model Data
+        All X variables are {array-like, sparse matrix} of shape (n_samples, n_features),
+        where ``n_users`` is the number of users.
+
+        Parameters
+        ----------
+        X_target_members: 1-d array of shape (n_users)
+            List of users used to train the target model.
+        y_target_members: nd array of shape (n_users,)
+            List of items each input user interacted with.
+        X_target_members: 1-d array of shape (n_users)
+            List of users used to train the target model for cold-start users.
+        y_target_members: nd array of shape (n_users,)
+            List of items the cold-start users interacted with.
+
+        """
+        self.X_target_members = X_target_members
+        self.X_target_non_members = X_target_non_members
+        self.y_target_members = y_target_members
+        self.y_target_non_members = y_target_non_members
+
+
 class AttackModelData:
     """
     Convenience class to easily pass around the dataset prepared for training and testing
     the attack model
     """
-
+    
     def __init__(
-        self,
-        X_attack_train,
-        y_attack_train,
-        y_membership_train,
-        X_attack_test,
-        y_attack_test,
-        y_membership_test,
+            self,
+            X_attack_train,
+            y_attack_train,
+            y_membership_train,
+            X_attack_test,
+            y_attack_test,
+            y_membership_test,
     ):
         """
         Create Attack Model Data
@@ -149,7 +214,7 @@ class Dataset:
     carrying out the attacks.
     Also implements utility methods for generating attack sets
     """
-
+    
     def __init__(self, name: str = None, df_x=None, df_y=None):
         """
         Create the dataset wrapper.
@@ -167,9 +232,9 @@ class Dataset:
         self.name = name
         self.df_x, self.df_y = df_x, df_y
         self.splits = {}
-
+    
     def split_dataset(
-        self, seed: int, split_array: List[float], split_names: List[str] = None
+            self, seed: int, split_array: List[float], split_names: List[str] = None
     ):
         """
         Splits dataset according to the specified fractions.
@@ -193,7 +258,7 @@ class Dataset:
         assert np.round(np.sum(split_array), 3) == 1.0
         if split_names is not None:
             assert len(split_array) == len(split_names)
-
+        
         x_2, y_2 = (
             self.df_x,
             self.df_y,
@@ -207,14 +272,14 @@ class Dataset:
                 )
                 self.splits[split_name] = [x_1, y_1]
                 test_size = 1 - (
-                    split_array[i + 1] / np.sum(split_array[i + 1 :])
+                        split_array[i + 1] / np.sum(split_array[i + 1:])
                 )  # calculate the new ratio, based on the size of the remaining data
             else:
                 self.splits[split_name] = [x_2, y_2]  # add the last split
         for key in self.splits.keys():
             print(key + "\t" + str(len((self.splits[key])[1])))
         return self.splits
-
+    
     def _sample_from_split(self, split_name: str, frac: float = None, seed: int = 42):
         """
         Sample a small fraction of the data.
@@ -239,7 +304,7 @@ class Dataset:
             x_split, y_split, test_size=1 - frac, random_state=seed
         )
         return x_sample, y_sample
-
+    
     def get_merged_sets(self, split_names: List[str]):
         """
         Merge multiple splits of data.
@@ -268,7 +333,7 @@ class Dataset:
         )
         y_merged = pd.concat(y_splits)
         return x_merged, y_merged
-
+    
     def _create_attack_set(self, X_attack_in, y_attack_in, X_attack_out, y_attack_out):
         """
         Given the splits that correspond to attack in and out sets, generate the full attack
@@ -301,14 +366,14 @@ class Dataset:
             else np.concatenate((X_attack_in, X_attack_out))
         )
         y_attack = pd.concat([y_attack_in, y_attack_out])
-
-        for _i in range((X_attack_in).shape[0]):
+        
+        for _i in range(X_attack_in.shape[0]):
             y_membership.append(1)
-        for _i in range((X_attack_out).shape[0]):
+        for _i in range(X_attack_out.shape[0]):
             y_membership.append(0)
-
+        
         return X_attack, y_attack, y_membership
-
+    
     def create_attack_set_from_splits(self, attack_in_set_name, attack_out_set_name):
         """
         Given the splits that correspond to attack in and out sets, generate the full attack
@@ -321,12 +386,9 @@ class Dataset:
         attack_out_set_name:
             Dataset that was not included as part of the training set of the target model.
 
-        Returns
-        -------
-        {array-like, sparse matrix} of shape (n_samples, n_feature), darray of shape (n_samples,), darray of shape (n_samples,)
-            Input features and output labels of the attack data points, along with their
-            membership label (0-1 label that says whether or not they were included during training
-            the target model)
+        Returns ------- {array-like, sparse matrix} of shape (n_samples, n_feature), darray of shape (n_samples,),
+        darray of shape (n_samples,) Input features and output labels of the attack data points, along with their
+        membership label (0-1 label that says whether they were included during training the target model)
 
         """
         X_attack_in, y_attack_in = self.splits[attack_in_set_name]
@@ -334,11 +396,11 @@ class Dataset:
         return self._create_attack_set(
             X_attack_in, y_attack_in, X_attack_out, y_attack_out
         )
-
+    
     # sample a fraction of the train set to create attack in set, and merge with the given
     # out set to generate the full attack set
     def create_attack_set_by_sampling_from_train(
-        self, train_set_name, train_fraction, attack_out_set_name, seed=42
+            self, train_set_name, train_fraction, attack_out_set_name, seed=42
     ):
         X_attack_in, y_attack_in = self._sample_from_split(
             train_set_name, frac=train_fraction, seed=seed
@@ -347,14 +409,14 @@ class Dataset:
         return self._create_attack_set(
             X_attack_in, y_attack_in, X_attack_out, y_attack_out
         )
-
+    
     @abstractmethod
     def load_data(
-        self,
-        source_file,
-        header: bool = None,
-        target_ix: int = None,
-        ignore_ix: List[int] = None,
+            self,
+            source_file,
+            header: bool = None,
+            target_ix: int = None,
+            ignore_ix: List[int] = None,
     ):
         """
         Method that specifies how the data should be loaded. Mainly applicable for tabular data
@@ -383,7 +445,7 @@ class ClassificationDataset(Dataset):
     """
     Generic classification dataset in a tabular format, read in a somewhat consistent manner
     """
-
+    
     def __init__(self, name, df_x=None, df_y=None):
         """
         Create a Classification Dataset wrapper.
@@ -405,7 +467,7 @@ class ClassificationDataset(Dataset):
         self.target_model_data = None
         self.attack_model_data = None
         super(ClassificationDataset, self).__init__(name)
-
+    
     def load_data_from_df(self, input_features, target):
         """
         Load data from another data frame.
@@ -422,13 +484,13 @@ class ClassificationDataset(Dataset):
         """
         self.df_x = input_features
         self.df_y = target
-
+    
     def load_data(
-        self,
-        source_file,
-        contains_header: bool = False,
-        target_ix: int = None,
-        ignore_ix: List[int] = None,
+            self,
+            source_file,
+            contains_header: bool = False,
+            target_ix: int = None,
+            ignore_ix: List[int] = None,
     ):
         """
         Method that specifies how the data should be loaded. Mainly applicable for tabular data.
@@ -463,18 +525,18 @@ class ClassificationDataset(Dataset):
             df = pd.DataFrame(data[0])
         else:
             raise ValueError
-
+        
         # first, find the y index and remove it to get x
         y_ix = target_ix if target_ix is not None else len(df.columns) - 1
         self.df_y = df.iloc[:, y_ix]
         if isinstance(self.df_y[0], bytes):
             self.df_y = self.df_y.str.decode("utf-8")
         self.df_x = df.drop(df.columns[y_ix], axis=1)
-
+        
         # next remove the ones that need to be ignored.
         if ignore_ix is not None:
             self.df_x = self.df_x.drop(ignore_ix, axis=1)
-
+    
     def get_column_transformer(self):
         """
         Transforming categorical and numerical features.
@@ -487,26 +549,26 @@ class ClassificationDataset(Dataset):
         """
         if self.column_transformer is None:
             assert self.df_x is not None
-
+            
             # select categorical and numerical features
             cat_ix = self.df_x.select_dtypes(include=["object", "bool"]).columns
             num_ix = self.df_x.select_dtypes(include=["int64", "float64"]).columns
-
+            
             # get the column indices, since the drops mess up the column names
             cat_new_ix = [self.df_x.columns.get_loc(col) for col in cat_ix]
             num_new_ix = [self.df_x.columns.get_loc(col) for col in num_ix]
-
+            
             # pipeline for categorical data
             cat_preprocessing = make_pipeline(
                 SimpleImputer(strategy="constant", fill_value="NA"),
                 OneHotEncoder(handle_unknown="ignore"),
             )
-
+            
             # pipeline for numerical data
             num_preprocessing = make_pipeline(
                 SimpleImputer(strategy="mean"), MinMaxScaler()
             )
-
+            
             # combine both pipeline using a columnTransformer
             self.column_transformer = ColumnTransformer(
                 [
@@ -514,9 +576,9 @@ class ClassificationDataset(Dataset):
                     ("cat", cat_preprocessing, cat_new_ix),
                 ]
             )
-
+        
         return self.column_transformer
-
+    
     def get_label_encoder(self):
         """
         Encode the labels.
@@ -529,7 +591,7 @@ class ClassificationDataset(Dataset):
         if self.label_encoder is None:
             self.label_encoder = LabelEncoder()
         return self.label_encoder
-
+    
     def fit_encoders_and_transform(self, df_x, df_y):
         """
         Transform the data and encode labels
@@ -541,7 +603,7 @@ class ClassificationDataset(Dataset):
         df_x = self.column_transformer.fit_transform(df_x)
         df_y = self.label_encoder.fit_transform(df_y)
         return df_x, df_y
-
+    
     def fit_encoders(self, df_x, df_y):
         """
         Fit the column transformer and label encoders. This should really be only done
@@ -561,7 +623,7 @@ class ClassificationDataset(Dataset):
         """
         self.get_column_transformer()  # this will set the column transformer
         self.get_label_encoder()  # this will set the label encoder
-
+        
         self.column_transformer.fit(df_x)
         unique_values = list(df_y.unique())
         if df_y.dtypes == "int64":
@@ -569,7 +631,7 @@ class ClassificationDataset(Dataset):
         else:
             unique_values.append("Unseen")
         self.label_encoder = self.label_encoder.fit(unique_values)
-
+    
     def encode_data(self, df_x, df_y):
         """
         Apply the column transformer and label encoder
@@ -597,7 +659,7 @@ class ClassificationDataset(Dataset):
                     df_y = df_y.replace(to_replace=label, value="Unseen")
         df_y = self.label_encoder.transform(df_y)
         return df_x, df_y
-
+    
     def get_num_rows(self):
         """
         Get number of rows in the dataset.
@@ -609,11 +671,11 @@ class ClassificationDataset(Dataset):
 
         """
         return self.df_y.shape[0]
-
+    
     def prepare_target_and_attack_data(
-        self,
-        data_split_seed,
-        dataset_split_ratios,
+            self,
+            data_split_seed,
+            dataset_split_ratios,
     ):
         """
         Given the data split ratios, preform the data split, and prepare appropriate datasets
@@ -634,17 +696,17 @@ class ClassificationDataset(Dataset):
         data_split_names = [e.name for e in dataset_split_ratios.keys()]
         data_split_ratios = list(dataset_split_ratios.values())
         self.split_dataset(data_split_seed, data_split_ratios, data_split_names)
-
+        
         """
         Merge appropriate splits to create the train set for the target model. Also fit data
         encoders on this training set, and encode the target train and test sets.
         """
         X_target_train, y_target_train = self.get_merged_sets(
-            (
+            [
                 DataSplit.ATTACK_TRAIN_IN.name,
                 DataSplit.ATTACK_TEST_IN.name,
                 DataSplit.TARGET_ADDITIONAL_TRAIN.name,
-            )
+            ]
         )
         X_target_valid, y_target_valid = self.splits[DataSplit.TARGET_VALID.name]
         X_target_test, y_target_test = self.splits[DataSplit.TARGET_TEST.name]
@@ -657,7 +719,7 @@ class ClassificationDataset(Dataset):
             X_target_valid, y_target_valid
         )
         X_target_test, y_target_test = self.encode_data(X_target_test, y_target_test)
-
+        
         self.target_model_data = TargetModelData(
             X_target_train,
             y_target_train,
@@ -673,7 +735,7 @@ class ClassificationDataset(Dataset):
         and y_membership_test, for the attack train and test sets respectively. Finally, encode the
         attack data points.
         """
-
+        
         (
             X_attack_train,
             y_attack_train,
@@ -681,7 +743,7 @@ class ClassificationDataset(Dataset):
         ) = self.create_attack_set_from_splits(
             DataSplit.ATTACK_TRAIN_IN.name, DataSplit.ATTACK_TRAIN_OUT.name
         )
-
+        
         (
             X_attack_test,
             y_attack_test,
@@ -689,13 +751,256 @@ class ClassificationDataset(Dataset):
         ) = self.create_attack_set_from_splits(
             DataSplit.ATTACK_TEST_IN.name, DataSplit.ATTACK_TEST_OUT.name
         )
-
+        
         # encode data
         X_attack_train, y_attack_train = self.encode_data(
             X_attack_train, y_attack_train
         )
         X_attack_test, y_attack_test = self.encode_data(X_attack_test, y_attack_test)
+        
+        self.attack_model_data = AttackModelData(
+            X_attack_train,
+            y_attack_train,
+            y_membership_train,
+            X_attack_test,
+            y_attack_test,
+            y_membership_test,
+        )
 
+
+class CFDataset(Dataset):
+    """
+    Generic recommender dataset in a tabular format, read in a somewhat consistent manner
+    """
+    
+    def __init__(self, name):
+        """
+        Create a Recommender Dataset wrapper.
+
+        Parameters
+        ----------
+        name: str
+            Name of the dataset
+        df: dataframe with 4 columns: userID, itemID, rating, timestamp.
+        df_x: darray of shape (n_users),
+            where ``n_users`` is the number of users.
+        df_y: ndarray of shape (n_users, )
+            where ``n_users`` is the number of users, which lists out the items that the user interacted with.
+        item_features: ndarray of shape (n_items, )
+            vector representation for every item.
+        """
+        self.name = name
+        self.df = None
+        self.df_y = None
+        self.df_x = None
+        self.target_model_data = None
+        self.shadow_model_data = None
+        self.attack_model_data = None
+        self.item_features = None
+        super(CFDataset, self).__init__(name)
+    
+    def load_data_from_df(self, dataset):
+        """
+        Load data from another data frame.
+
+        Parameters
+        ----------
+        user_item_ratings: pandas.DataFrame
+        This dataframe has four columns: userID, itemID, ratings, timestamp
+        The userID is a continuous integer between (0, n_users)
+        The itemID is a continuous integer between (0, n_items)
+        Returns
+        -------
+        None
+
+        """
+        pivot_table = dataset.pivot(index="userID", columns="itemID", values="rating").fillna(0)
+        unique_item_ids = sorted(dataset['itemID'].unique())
+        pivot_table = pivot_table.reindex(columns=unique_item_ids, fill_value=0)
+        dataset = pd.DataFrame(
+            {
+                'userID': pivot_table.index,
+                'interactions': pivot_table.values.tolist()
+            }
+        )
+        self.df_x = dataset[['userID']].copy()
+        self.df_y = dataset[['interactions']].copy()
+    
+    def load_data(self, source_file,
+                  contains_header: bool = False,
+                  target_ix: int = None,
+                  ignore_ix: List[int] = None, ):
+        """
+        Method that specifies how the data should be loaded. Mainly applicable for tabular data.
+
+        Parameters
+        ----------
+        source_file: os.path
+            Filename of the source file.
+        contains_header: bool
+            Whether to contain header.
+        target_ix: int
+            Index of the target variable.
+        ignore_ix: List[int]
+            Indices to be ignored.
+
+        Returns
+        -------
+        pandas dataframe of shape (n_samples, n_feature), pandas df of shape (n_samples,)
+            Input features and output labels.
+
+        """
+        if source_file.endswith(".csv"):
+            if contains_header:
+                df = pd.read_csv(
+                    source_file, sep=",", skiprows=1, header=None, encoding="utf-8"
+                )  # ignore the headers, especially when reading lots of datasets.
+            else:
+                df = pd.read_csv(source_file, sep=",", header=None, encoding="utf-8")
+        elif source_file.endswith(".arff"):
+            data = arff.loadarff(source_file)
+            df = pd.DataFrame(data[0])
+        else:
+            raise ValueError
+        
+        df = pd.DataFrame(df, columns=['userID', 'itemID', 'rating', 'timestamp']).astype(int)
+        self.load_data_from_df(df)
+    
+    def get_item_features(self):
+        """
+        Method that creates the dataset for the items.
+        Returns
+        -------
+        None
+
+        """
+        # extract all the items
+        unique_users = self.df['userID'].unique()
+        unique_items = self.df['itemID'].unique()
+        selected_users = np.random.choice(unique_users, size=int(len(unique_users) * float(CFDataSplit.ITEM_DATASET)),
+                                          replace=False)
+        # Filter the DataFrame to include only selected users
+        filtered_df = self.df[self.df['userID'].isin(selected_users)]
+        missing_items = set(unique_items) - set(filtered_df['itemID'])
+        # Add interactions with missing items to the Item Features Dataset
+        missing_items_data = self.df[self.df['itemID'].isin(missing_items)]
+        self.item_features = pd.concat([filtered_df, missing_items_data]).drop_duplicates()
+    
+    def perform_matrix_factorization(self, num_components):
+        """
+        Method that computes the vector representations of the items.
+
+        Parameters
+        ----------
+        num_components: int
+        number of components in singular value decomposition
+        Returns
+        -------
+        item_vector_t.transpose(): ndarray of shape (n_items, n_components)
+        the vector representation of the items
+
+        """
+        R_df = self.df.pivot(index='userID', columns='itemID', values='rating')
+        R_df = R_df.fillna(R_df.mean())
+        mtrx = R_df.to_numpy()
+        ratings_mean = np.mean(mtrx, axis=1)
+        R_demeaned = mtrx - ratings_mean.reshape(-1, 1)
+        user_vector, sigma, item_vector_t = svds(R_demeaned, k=num_components)
+        return item_vector_t.transpose()
+    
+    def create_shadow_target_dataset(self):
+        """
+        Method that creates the target and shadow datasets.
+        Returns
+        -------
+        None
+
+        """
+        item_features_users = self.item_features['userID'].unique()
+        dataset = self.df[~self.df['userID'].isin(item_features_users)]
+        pivot_table = dataset.pivot(index="userID", columns="itemID", values="rating").fillna(0)
+        unique_item_ids = sorted(dataset['itemID'].unique())
+        pivot_table = pivot_table.reindex(columns=unique_item_ids, fill_value=0)
+        dataset = pd.DataFrame(
+            {
+                'userID': pivot_table.index,
+                'interactions': pivot_table.values.tolist()
+            }
+        )
+        self.df_x = dataset[['userID']].copy()
+        self.df_y = dataset[['interactions']].copy()
+    
+    def prepare_target_and_attack_data(
+            self,
+            data_split_seed,
+            dataset_split_ratios,
+    ):
+        """
+        Given the data split ratios, preform the data split, and prepare appropriate datasets
+        for training and testing the target and attack models.
+
+        Parameters
+        ----------
+        data_split_seed: int
+            Random seed for splitting the data.
+        dataset_split_ratios: dict[DataSplit -> float]
+            Map of data split names and fractions.
+
+        Returns
+        -------
+        None
+
+        """
+        data_split_names = [e.name for e in dataset_split_ratios.keys()]
+        data_split_ratios = list(dataset_split_ratios.values())
+        self.split_dataset(data_split_seed, data_split_ratios, data_split_names)
+        
+        """
+        Merge appropriate splits to create the train set for the target model. Also fit data
+        encoders on this training set, and encode the target train and test sets.
+        """
+        X_shadow_members, y_shadow_members = self.splits[CFDataSplit.ATTACK_TRAIN_IN.name]
+        X_shadow_non_members, y_shadow_non_members = self.splits[CFDataSplit.ATTACK_TRAIN_OUT.name]
+        X_target_members, y_target_members = self.splits[CFDataSplit.TARGET_TRAIN_MEMBERS.name]
+        X_target_non_members, y_target_non_members = self.splits[CFDataSplit.TARGET_NON_MEMBERS.name]
+        self.target_model_data = TargetCFData(
+            X_target_members,
+            y_target_members,
+            X_target_non_members,
+            y_target_non_members,
+        )
+        
+        self.shadow_model_data = TargetCFData(
+            X_shadow_members,
+            y_shadow_members,
+            X_shadow_non_members,
+            y_shadow_non_members,
+        )
+        
+        """
+        Prepare attack model train and test sets by merging appropriate splits, and calculating the
+        membership ground truth label - i.e., recording whether or not this data point was used as
+        part of the training set for the target model. This label is stored in y_membership_train
+        and y_membership_test, for the attack train and test sets respectively. Finally, encode the
+        attack data points.
+        """
+        
+        (
+            X_attack_train,
+            y_attack_train,
+            y_membership_train,
+        ) = self.create_attack_set_from_splits(
+            CFDataSplit.ATTACK_TRAIN_IN.name, CFDataSplit.ATTACK_TRAIN_OUT.name
+        )
+        
+        (
+            X_attack_test,
+            y_attack_test,
+            y_membership_test,
+        ) = self.create_attack_set_from_splits(
+            CFDataSplit.TARGET_TRAIN_MEMBERS.name, CFDataSplit.TARGET_NON_MEMBERS.name
+        )
+        
         self.attack_model_data = AttackModelData(
             X_attack_train,
             y_attack_train,

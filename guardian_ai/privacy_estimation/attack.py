@@ -8,7 +8,6 @@ from abc import abstractmethod
 import enum
 
 import numpy as np
-import sklearn.metrics
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import classification_report, get_scorer, roc_curve
 from sklearn.utils.validation import check_is_fitted
@@ -23,7 +22,7 @@ class AttackType(enum.Enum):
     """
     All the attack types currently supported by this tool.
     """
-
+    
     LossBasedBlackBoxAttack = 0
     ExpectedLossBasedBlackBoxAttack = 1
     ConfidenceBasedBlackBoxAttack = 2
@@ -32,6 +31,7 @@ class AttackType(enum.Enum):
     CombinedBlackBoxAttack = 5
     CombinedWithMerlinBlackBoxAttack = 6
     MorganAttack = 7
+    CollaborativeFilteringAttack = 8
 
 
 class ThresholdClassifier(BaseEstimator, ClassifierMixin):
@@ -40,7 +40,7 @@ class ThresholdClassifier(BaseEstimator, ClassifierMixin):
     a single feature, a threshold based classifier predicts if that feature value is over
     a threshold value.
     """
-
+    
     def __init__(self, threshold: float = 0.5):
         """
         Instantiate the classifier
@@ -54,7 +54,7 @@ class ThresholdClassifier(BaseEstimator, ClassifierMixin):
         self.parameters = {}
         self.classes_ = None
         self.parameters["threshold"] = threshold
-
+    
     def fit(self, X, y):
         """
         Fit the data to the classifier, but because this is a simple threshold classifier, fit
@@ -78,7 +78,7 @@ class ThresholdClassifier(BaseEstimator, ClassifierMixin):
         self.X_ = X
         self.y = y
         return self
-
+    
     def predict(self, X):
         """
         Make prediction using the decision function of the classifier.
@@ -97,7 +97,7 @@ class ThresholdClassifier(BaseEstimator, ClassifierMixin):
         """
         d = self.decision_function(X)
         return self.classes_[np.argmax(d, axis=1)]
-
+    
     def decision_function(self, X):
         """
         For a given attack point with just a single feature, a threshold based classifier
@@ -117,20 +117,20 @@ class ThresholdClassifier(BaseEstimator, ClassifierMixin):
 
         """
         check_is_fitted(self)
-
+        
         threshold = self.parameters["threshold"]
         if hasattr(self, "threshold"):
             threshold = self.threshold
-
+        
         d_true = X >= threshold
-
+        
         index_of_true = np.where(self.classes_ == 1)
         if index_of_true == 0:
             d = np.column_stack((d_true, np.zeros((X.shape[0], 1))))
         else:
             d = np.column_stack((np.zeros((X.shape[0], 1)), d_true))
         return d
-
+    
     def get_params(self, deep: bool = True):
         """
         Get parameters for this estimator.
@@ -147,7 +147,7 @@ class ThresholdClassifier(BaseEstimator, ClassifierMixin):
             Parameter names mapped to their values.
         """
         return self.parameters
-
+    
     def set_params(self, **parameters):
         """
         Set estimator parametes.
@@ -175,11 +175,11 @@ class BlackBoxAttack:
     or not. It's black box because this type of attack can only access the prediction API of
     the target model and does not have access to the model parameters.
     """
-
+    
     def __init__(
-        self,
-        attack_model: BaseEstimator,
-        name: str = "generic_black_box_attack",
+            self,
+            attack_model: BaseEstimator,
+            name: str = "generic_black_box_attack",
     ):
         """
         Initialize the attack.
@@ -195,15 +195,17 @@ class BlackBoxAttack:
         self.attack_model = attack_model
         self.X_membership_train = None  # Useful for caching the feature values for the attack (e.g. Morgan attack)
         self.X_membership_test = None
-
+    
     @abstractmethod
     def transform_attack_data(
-        self,
-        target_model: TargetModel,
-        X_attack,
-        y_attack,
-        split_type: str = None,
-        use_cache: bool = False,
+            self,
+            target_model: TargetModel,
+            X_attack,
+            y_attack,
+            y_membership,
+            split_type: str = None,
+            use_cache: bool = False,
+            features: List[List[float]] = None,
     ):
         """
         This is the central method in designing the attack, and captures the attacker's
@@ -220,13 +222,17 @@ class BlackBoxAttack:
         X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
             ``n_features`` is the number of features.
-        y_attack: ndarray of shape (n_samples,)
+        y_attack: ndarray of shape (n_users,)
             Vector containing the  output labels of the attack data points (not membership label).
+        y_membership: ndarray of shape (n_users,)
+            Vector containing the membership label
         split_type: str
             Whether this is "train" set or "test" set, which is used for Morgan attack.
         use_cache: bool
             Whether to use the cache or not.
-
+        features: List[List[float]]
+            Feature vectors of the items - required when the collaborative filtering model
+            is being attacked
         Returns
         -------
         X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)
@@ -234,16 +240,17 @@ class BlackBoxAttack:
             ``n_features`` is the number of features.
 
         """
-
+    
     def train_attack_model(
-        self,
-        target_model: TargetModel,
-        X_attack_train,
-        y_attack_train,
-        y_membership_train,
-        threshold_grid: List[float] = None,
-        cache_input: bool = False,
-        use_cache: bool = False,
+            self,
+            target_model: TargetModel,
+            X_attack_train,
+            y_attack_train,
+            y_membership_train,
+            threshold_grid: List[float] = None,
+            cache_input: bool = False,
+            use_cache: bool = False,
+            features=None,
     ):
         """
         Takes the attack data points, transforms them into attack features and then trains the
@@ -274,23 +281,25 @@ class BlackBoxAttack:
         use_cache: bool
             Should we use the feature values from the cache - useful for Morgan
             and Combined attacks.
-
+        features: List[List[float]]
+            Feature vectors of the items - required when the collaborative filtering model
+            is being attacked
         Returns
         -------
         Trained attack model, usually a binary classifier.
 
         """
         if isinstance(
-            self.attack_model, ThresholdClassifier
+                self.attack_model, ThresholdClassifier
         ):  # We only need this for threshold based attacks
             self.attack_model.fit(X=None, y=y_membership_train)
-
+        
         X_membership_train = self.transform_attack_data(
             target_model,
             X_attack_train,
             y_attack_train,
-            split_type="train",
-            use_cache=use_cache,
+            y_membership_train,
+            features
         )
         if cache_input:
             self.X_membership_train = X_membership_train
@@ -307,7 +316,7 @@ class BlackBoxAttack:
             self.attack_model = self.attack_model.fit(
                 X_membership_train, y_membership_train
             )
-
+    
     def perform_attack(self, target_model: TargetModel, X_attack, y_attack):
         """
         Perform the actual attack. For now, this method would only be used in settings where
@@ -338,17 +347,18 @@ class BlackBoxAttack:
             target_model, X_attack, y_attack, split_type="runtime"
         )
         return self.attack_model.predict(X_membership)
-
+    
     def evaluate_attack(
-        self,
-        target_model: TargetModel,
-        X_attack_test,
-        y_attack_test,
-        y_membership_test,
-        metric_functions: List[str],
-        print_roc_curve: bool = False,
-        cache_input: bool = False,
-        use_cache: bool = False,
+            self,
+            target_model: TargetModel,
+            X_attack_test,
+            y_attack_test,
+            y_membership_test,
+            metric_functions: List[str],
+            print_roc_curve: bool = False,
+            cache_input: bool = False,
+            use_cache: bool = False,
+            features=None,
     ):
         """
         Runs the attack against the target model, evaluates its accuracy and provides the
@@ -385,18 +395,21 @@ class BlackBoxAttack:
         use_cache: bool, Defaults to False.
             Should we use the feature values from the cache - useful for Morgan
             attack, which uses merlin ratio and loss values.
-
+        features: List[List[float]]
+            Feature vectors of the items - required when the collaborative filtering model
+            is being attacked
         Returns
         -------
         List[float]
             Success metrics for the attack.
 
         """
-
+        
         X_membership_test = self.transform_attack_data(
             target_model,
             X_attack_test,
             y_attack_test,
+            features,
             split_type="test",
             use_cache=use_cache,
         )
@@ -404,7 +417,7 @@ class BlackBoxAttack:
             self.X_membership_test = X_membership_test
         predictions = self.attack_model.predict(X_membership_test)
         print(classification_report(y_membership_test, predictions))
-
+        
         if print_roc_curve and not isinstance(self.attack_model, ThresholdClassifier):
             predictions_prob = self.attack_model.predict_proba(X_membership_test)
             fpr, tpr, thresholds = roc_curve(
@@ -413,7 +426,7 @@ class BlackBoxAttack:
             print(fpr)
             print(tpr)
             print(thresholds)
-
+        
         metrics = []
         for metric_function_name in metric_functions:
             scorer = get_scorer(
@@ -431,10 +444,10 @@ class LossBasedBlackBoxAttack(BlackBoxAttack):
     attack point. Attacker hypothesis is that lower loss indicates that the target model has
     seen this data point at training time.
     """
-
+    
     def __init__(
-        self,
-        attack_model: BaseEstimator,
+            self,
+            attack_model: BaseEstimator,
     ):
         """
         Instantiate the Loss based attack.
@@ -449,38 +462,48 @@ class LossBasedBlackBoxAttack(BlackBoxAttack):
         super(LossBasedBlackBoxAttack, self).__init__(
             attack_model, name=AttackType.LossBasedBlackBoxAttack.name
         )
-
+    
     def transform_attack_data(
-        self,
-        target_model: TargetModel,
-        X_attack,
-        y_attack,
-        split_type: str = None,
-        use_cache: bool = False,
+            self,
+            target_model: TargetModel,
+            X_attack,
+            y_attack,
+            y_membership,
+            split_type: str = None,
+            use_cache: bool = False,
+            features: List[List[float]] = None,
     ):
         """
-        Takes the input attack points, and calculates loss values on them.
+        This is the central method in designing the attack, and captures the attacker's
+        hypothesis about the membership of a data point in the training dataset of the target
+        model. Its job is to derive signals from the original data that might be relevant to
+        determining membership. Takes a dataset in the original format and converts it to the
+        input variable for the attack. Think of it as feature engineering for building
+        the attack model, which is essentially a binary classifier.
 
         Parameters
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
             Target model being attacked.
-        X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
+        X_attack: {array-like, sparse matrix} of shape (n_users, n_items)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
             ``n_features`` is the number of features.
-        y_attack: ndarray of shape (n_samples,)
-            Vector containing the  output labels of the attack data points (not membership label).
+        y_attack: ndarray of shape (n_users, n_items)
+            Vector containing the output labels of the attack data points (not membership label).
+        y_membership: array of shape (n_users, 1)
+            Vector containing the membership labels.
         split_type: str
-            Whether this is "train" set or "test" set, which is used for Morgan
-            attack, which uses cached values of loss and merlin ratios for efficiency.
+            Use information cached from running the loss based and merlin attacks.
         use_cache: bool
             Using the cache or not.
-
+        features: List[List[float]]
+            Feature vectors of the items - required when the collaborative filtering model
+            is being attacked
         Returns
         -------
         X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)
-            Input loss value features for the attack model, where ``n_samples`` is
-            the number of samples and ``n_features`` is the number of features.
+            Input features for the attack model, where ``n_samples`` is the number of samples and
+            ``n_features`` is the number of features.
 
         """
         labels = target_model.model.classes_
@@ -497,7 +520,7 @@ class ExpectedLossBasedBlackBoxAttack(BlackBoxAttack):
     regression classifier. The only reason we need a separate attack for this is because the
     shape of the attack feature needs to be different.
     """
-
+    
     def __init__(self, attack_model: BaseEstimator):
         """
         Instantiate the Expected Loss based attack.
@@ -508,42 +531,52 @@ class ExpectedLossBasedBlackBoxAttack(BlackBoxAttack):
             Typically a single feature logistic regression.
 
         """
-
+        
         super(ExpectedLossBasedBlackBoxAttack, self).__init__(
             attack_model, name=AttackType.ExpectedLossBasedBlackBoxAttack.name
         )
-
+    
     def transform_attack_data(
-        self,
-        target_model: TargetModel,
-        X_attack,
-        y_attack,
-        split_type: str = None,
-        use_cache: bool = False,
+            self,
+            target_model: TargetModel,
+            X_attack,
+            y_attack,
+            y_membership,
+            split_type: str = None,
+            use_cache: bool = False,
+            features: List[List[float]] = None,
     ):
         """
-        Takes the input attack points, and calculates loss values on them.
+        This is the central method in designing the attack, and captures the attacker's
+        hypothesis about the membership of a data point in the training dataset of the target
+        model. Its job is to derive signals from the original data that might be relevant to
+        determining membership. Takes a dataset in the original format and converts it to the
+        input variable for the attack. Think of it as feature engineering for building
+        the attack model, which is essentially a binary classifier.
 
         Parameters
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
             Target model being attacked.
-        X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
+        X_attack: {array-like, sparse matrix} of shape (n_users, n_items)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
             ``n_features`` is the number of features.
-        y_attack: ndarray of shape (n_samples,)
-            Vector containing the  output labels of the attack data points (not membership label).
+        y_attack: ndarray of shape (n_users, n_items)
+            Vector containing the output labels of the attack data points (not membership label).
+        y_membership: array of shape (n_users, 1)
+            Vector containing the membership labels.
         split_type: str
-            Whether this is "train" set or "test" set, which is used for Morgan
-            attack, which uses cached values of loss and merlin ratios for efficiency
+            Use information cached from running the loss based and merlin attacks.
         use_cache: bool
             Using the cache or not.
-
+        features: List[List[float]]
+            Feature vectors of the items - required when the collaborative filtering model
+            is being attacked
         Returns
         -------
         X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)
-            Input loss value features for the attack model, where `n_samples` is
-            the number of samples and `n_features` is the number of features.
+            Input features for the attack model, where ``n_samples`` is the number of samples and
+            ``n_features`` is the number of features.
 
         """
         labels = target_model.model.classes_
@@ -562,7 +595,7 @@ class ConfidenceBasedBlackBoxAttack(BlackBoxAttack):
     attack point. Attacker hypothesis is that higher confidence indicates that the target
     model has seen this data point at training time.
     """
-
+    
     def __init__(self, attack_model: BaseEstimator):
         """
         Instantiate the Confidence based attack
@@ -575,38 +608,48 @@ class ConfidenceBasedBlackBoxAttack(BlackBoxAttack):
         super(ConfidenceBasedBlackBoxAttack, self).__init__(
             attack_model, name=AttackType.ConfidenceBasedBlackBoxAttack.name
         )
-
+    
     def transform_attack_data(
-        self,
-        target_model: TargetModel,
-        X_attack,
-        y_attack,
-        split_type: str = None,
-        use_cache: bool = False,
+            self,
+            target_model: TargetModel,
+            X_attack,
+            y_attack,
+            y_membership,
+            split_type: str = None,
+            use_cache: bool = False,
+            features: List[List[float]] = None,
     ):
         """
-        Takes the input attack points, and calculates confidence values on them.
+        This is the central method in designing the attack, and captures the attacker's
+        hypothesis about the membership of a data point in the training dataset of the target
+        model. Its job is to derive signals from the original data that might be relevant to
+        determining membership. Takes a dataset in the original format and converts it to the
+        input variable for the attack. Think of it as feature engineering for building
+        the attack model, which is essentially a binary classifier.
 
         Parameters
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
             Target model being attacked.
-        X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
+        X_attack: {array-like, sparse matrix} of shape (n_users, n_items)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
             ``n_features`` is the number of features.
-        y_attack: ndarray of shape (n_samples,)
-            Vector containing the  output labels of the attack data points (not membership label)
+        y_attack: ndarray of shape (n_users, n_items)
+            Vector containing the output labels of the attack data points (not membership label).
+        y_membership: array of shape (n_users, 1)
+            Vector containing the membership labels.
         split_type: str
-            Whether this is "train" set or "test" set, which is used for Morgan
-            attack, which uses cached values of loss and merlin ratios for efficiency
+            Use information cached from running the loss based and merlin attacks.
         use_cache: bool
-            Using the cache or not
-
+            Using the cache or not.
+        features: List[List[float]]
+            Feature vectors of the items - required when the collaborative filtering model
+            is being attacked
         Returns
         -------
         X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)
-            Input confidence value features for the attack model, where ``n_samples`` is
-            the number of samples and ``n_features`` is the number of features.
+            Input features for the attack model, where ``n_samples`` is the number of samples and
+            ``n_features`` is the number of features.
 
         """
         probs = target_model.get_prediction_probs(X_attack)
@@ -618,7 +661,7 @@ class ExpectedConfidenceBasedBlackBoxAttack(BlackBoxAttack):
     """
     Classification based version of the Confidence based attack
     """
-
+    
     def __init__(self, attack_model: BaseEstimator):
         """
         Instantiate the Expected Confidence based attack
@@ -632,38 +675,49 @@ class ExpectedConfidenceBasedBlackBoxAttack(BlackBoxAttack):
         super(ExpectedConfidenceBasedBlackBoxAttack, self).__init__(
             attack_model, name=AttackType.ExpectedConfidenceBasedBlackBoxAttack.name
         )
-
+    
     def transform_attack_data(
-        self,
-        target_model: TargetModel,
-        X_attack,
-        y_attack,
-        split_type: str = None,
-        use_cache: bool = False,
+            self,
+            target_model: TargetModel,
+            X_attack,
+            y_attack,
+            y_membership,
+            split_type: str = None,
+            use_cache: bool = False,
+            features: List[List[float]] = None,
     ):
         """
-        Takes the input attack points, and calculates loss values on them.
+        This is the central method in designing the attack, and captures the attacker's
+        hypothesis about the membership of a data point in the training dataset of the target
+        model. Its job is to derive signals from the original data that might be relevant to
+        determining membership. Takes a dataset in the original format and converts it to the
+        input variable for the attack. Think of it as feature engineering for building
+        the attack model, which is essentially a binary classifier.
 
         Parameters
         ----------
         target_model: guardian_ai.privacy_estimation.model.TargetModel
             Target model being attacked.
-        X_attack: {array-like, sparse matrix} of shape (n_samples, n_features)
+        X_attack: {array-like, sparse matrix} of shape (n_users, n_items)
             Input features of the attack datapoints, where ``n_samples`` is the number of samples and
             ``n_features`` is the number of features.
-        y_attack: ndarray of shape (n_samples,)
-            Vector containing the  output labels of the attack data points (not membership label).
+        y_attack: ndarray of shape (n_users, n_items)
+            Vector containing the output labels of the attack data points (not membership label).
+        y_membership: array of shape (n_users, 1)
+            Vector containing the membership labels.
         split_type: str
-            Whether this is "train" set or "test" set, which is used for Morgan
-            attack, which uses cached values of loss and merlin ratios for efficiency
+            Use information cached from running the loss based and merlin attacks.
         use_cache: bool
-            Using the cache or not
-
+            Using the cache or not.
+        features: List[List[float]]
+            Feature vectors of the items - required when the collaborative filtering model
+            is being attacked
         Returns
         -------
         X_membership:  {array-like, sparse matrix} of shape (n_samples, n_features)
-            Input confidence value features for the attack model, where ``n_samples`` is
-            the number of samples and ``n_features`` is the number of features.
+            Input features for the attack model, where ``n_samples`` is the number of samples and
+            ``n_features`` is the number of features.
+
         """
         probs = target_model.get_prediction_probs(X_attack)
         X_membership = np.max(probs, 1)
