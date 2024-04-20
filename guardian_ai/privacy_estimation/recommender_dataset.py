@@ -35,13 +35,15 @@ class RecommenderDataset(Dataset):
         users_file,
         items_file,
         ratings_file,
+        user_columns=None, 
+        ratings_columns=None,
+        items_columns=None
     ):
-       self.items = self.load_csv_or_dat(items_file, data_encoding='latin-1', columns=['MovieID', 'Title', 'Genres'])
+       self.items = self.load_csv_or_dat(items_file, data_encoding='latin-1', columns=items_columns)
        self.items['MovieID'] = self.items['MovieID'].apply(pd.to_numeric)
-       self.ratings = self.load_csv_or_dat(ratings_file, columns=['user_id', 'item_id', 'rating', 'timestamp'])
+       self.ratings = self.load_csv_or_dat(ratings_file, columns=ratings_columns)
        self.ratings = self.ratings.astype(int)
        self.users = self.load_csv_or_dat(users_file)
-       print("User length: " + str(len(pd.unique(self.ratings['user_id']))))
 
     def perform_matrix_factorization(self, num_components):
         x = self.ratings[['user_id', 'item_id']].values
