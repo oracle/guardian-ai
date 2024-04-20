@@ -1,13 +1,33 @@
 import numpy as np
 import pandas as pd
+import torch
+import torch.nn as nn
+import torch.optim as optim
 from abc import abstractmethod
-from recommenders.utils.constants import SEED
-from recommenders.models.ncf.ncf_singlenode import NCF
-from recommenders.models.ncf.dataset import Dataset as NCFDataset
-from recommenders.datasets.python_splitters import python_stratified_split
-from recommenders.evaluation.python_evaluation import (
-    map, ndcg_at_k, precision_at_k, recall_at_k
-)
+import random
+from model_utils import GeneralizedMatrixFactorization, NeuralCollaborativeFiltering, MultiLayerPerceptron
+
+
+class RatingDataset(torch.utils.data.Dataset):
+    def __init__(self, user_list, item_list, rating_list):
+        super(RatingDataset, self).__init__()
+        self.user_list = user_list
+        self.item_list = item_list
+        self.rating_list = rating_list
+    
+    def __len__(self):
+        return len(self.user_list)
+    
+    def __getitem__(self, idx):
+        user_ = self.user_list[idx]
+        item_ = self.item_list[idx]
+        rating = self.rating_list[idx]
+        
+        return (
+            torch.tensor(user_, dtype=torch.long),
+            torch.tensor(item_, dtype=torch.long),
+            torch.tensor(rating, dtype=torch.float)
+        )
 
 
 class CFModel:
@@ -17,39 +37,15 @@ class CFModel:
     
     """
     
-    def __init__(self, top_k, n_factors, layers, epochs, batch_size, lr):
+    def __init__(self, top_k, batch_size, epochs, lr, num_negatives, num_negatives_test):
         """
         Create the target model that is being attacked.
         Parameters
         ----------
-        df: dataframe with three columns: userID, itemID, rating.
-            The original dataset X, Y where X is a 1-d array of users and
-            Y is a ndarray of shape (n_users, ) needs to be transformed
-            into a pandas dataframe.
-        data: Recommenders data-object
-            Data object that could be utilized to train the model.
-        index2user: A dictionary having the indices as keys and user ids as values.
-            Used to convert the indexed user id into the original user id.
-        user2index: A dictionary having the user ids as keys and indices as values.
-            Used to convert the original user id into an indexed user id.
-        item2index: A dictionary having the indices as keys and item ids as values.
-            Used to convert the indexed item id into the original item id.
-        index2item: A dictionary having the item ids as keys and indices as values.
-            Used to convert the original item id into an indexed item id.
-        top_k: int
-            Specifies the number of recommendations.
-        model: str
-            Model name. Three models are supported: NCF, GMF and MLP
         """
-        self.df = None
-        self.data = None
-        self.index2user = None
-        self.user2index = None
-        self.item2index = None
-        self.index2item = None
         self.model = None
-        self.n_factors = n_factors
-        self.layers = layers
+        self.num_ng = num_negatives
+        self.num_ng_test = num_negatives_test
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = lr
@@ -61,6 +57,30 @@ class CFModel:
         """Get default model name."""
         pass
     
+    def _leave_one_out(dataframe):
+        """
+        leave-one-out evaluation protocol in paper https://www.comp.nus.edu.sg/~xiangnan/papers/ncf.pdf
+        """
+        train_df = pd.DataFrame(columns=['userID', 'itemID'])
+        test_df = pd.DataFrame(columns=['userID', 'itemID'])
+        for _, group in dataframe.groupby('userID'):
+            train_df = pd.concat([train_df, group.iloc[:-1]], ignore_index=True)
+            test_df = pd.concat([test_df, group.iloc[-1:]], ignore_index=True)
+        return train_df, test_df
+    
+    def negative_sampling(self, dataframe):
+        items = set(dataframe.itemID.tolist())
+        interact_status = (
+            dataframe.groupby('userID')['itemID']
+            .apply(set)
+            .reset_index()
+            .rename(columns={'itemID': 'interactions'}))
+        interact_status['negatives'] = interact_status['interactions'].apply(lambda x: items - x)
+        interact_status['sampled_negatives'] = interact_status['interactions'].apply(
+            lambda x: random.sample(list(x), self.num_ng_test))
+        print(interact_status)
+        return interact_status[['userID', 'negatives', 'sampled_negatives']]
+    
     def train_test_split(self, df_reindex):
         """
         Split the dataframe into train and test datasets.
@@ -70,34 +90,49 @@ class CFModel:
             - the first dataframe contains the training dataset with columns userId, itemId, rating
             - the second dataframe contains the test dataset with columns userId, itemId, rating
         """
-        train, test = python_stratified_split(df_reindex, 0.8)
-        assert df_reindex.userID.nunique() == train.userID.nunique() == test.userID.nunique()
-        return train, test
+        train, test = self._leave_one_out(df_reindex)
+        assert train.userID.nunique() == test.userID.nunique()
+        negatives = self.negative_sampling(df_reindex)
+        return train, test, negatives
     
-    def data_object(self, train, test):
-        """
-        Creates validation set using the leave out once cross validation approach and a NCF data object
-        Parameters
-        ----------
-        train: pandas.DataFrame containing the training dataset with three columns userId, itemID, rating
-        test: pandas.DataFrame containing the test dataset with three columns userId, itemID, rating
-        Return
-        ----------
-        None
-        """
-        leave_one_out_test = test.groupby("userID").last().reset_index()
-        train_file = "./train.csv"
-        test_file = "./test.csv"
-        leave_one_out_test_file = "./leave_one_out_test.csv"
-        train.to_csv(train_file, index=False)
-        test.to_csv(test_file, index=False)
-        print (test)
-        leave_one_out_test.to_csv(leave_one_out_test_file, index=False)
-        self.data = NCFDataset(train_file=train_file, test_file=leave_one_out_test_file, seed=SEED,
-                               overwrite_test_file_full=True)
+    def get_train_instance(self, train, negatives):
+        users, items, ratings = [], [], []
+        train_ratings = pd.merge(train, negatives[['userID', 'negatives']], on='userID')
+        train_ratings['sampled_negatives'] = train_ratings['negatives'].apply(
+            lambda x: random.sample(list(x), self.num_ng))
+        for row in train_ratings.itertuples():
+            users.append(int(row.userID))
+            items.append(int(row.itemID))
+            ratings.append(float(1))
+            for i in range(self.num_ng):
+                users.append(int(row.userID))
+                items.append(int(row.negatives[i]))
+                ratings.append(float(0))  # negative samples get 0 rating
+        dataset = RatingDataset(
+            user_list=users,
+            item_list=items,
+            rating_list=ratings)
+        return torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=4)
+    
+    def get_test_instance(self, test, negatives):
+        users, items, ratings = [], [], []
+        test_ratings = pd.merge(test, negatives[['userID', 'sampled_negatives']], on='userID')
+        for row in test_ratings.itertuples():
+            users.append(int(row.userID))
+            items.append(int(row.itemID))
+            ratings.append(float(1))
+            for i in getattr(row, 'sampled_negatives'):
+                users.append(int(row.userID))
+                items.append(int(i))
+                ratings.append(float(0))
+        dataset = RatingDataset(
+            user_list=users,
+            item_list=items,
+            rating_list=ratings)
+        return torch.utils.data.DataLoader(dataset, batch_size=self.num_ng_test + 1, shuffle=False, num_workers=2)
     
     @abstractmethod
-    def get_model(self):
+    def get_model(self, num_users, num_items):
         """
         Create the target model that is being attacked.
 
@@ -106,6 +141,18 @@ class CFModel:
         Model that is not yet trained.
         """
         pass
+    
+    @staticmethod
+    def create_index_map(X, y):
+        user_ids = X.userID.unique()
+        exploded_df = y.explode('itemID')
+        item_ids = exploded_df['itemID'].unique()
+        user_map = [{original_id: index + 1 for index, original_id in enumerate(user_ids)},
+                    {index + 1: original_id for index, original_id in enumerate(user_ids)}]
+        item_map = [{original_id: index + 1 for index, original_id in enumerate(item_ids)},
+                    {index + 1: original_id for index, original_id in enumerate(item_ids)}]
+        
+        return user_map, item_map
     
     def reindex(self, X, y):
         """
@@ -116,152 +163,101 @@ class CFModel:
         -------
         train: Transformed pandas.dataframe object containing three columns userId, itemID and rating.
         """
-        user_ids = []
-        item_ids = []
-        ratings = []
         temp_df = pd.concat([X, y], axis=1)
-        for index, row in temp_df.iterrows():
-            user_id = row['userID']
-            interactions = row['interactions']
-            for item_id, rating in enumerate(interactions, start=1):
-                if rating != 0:
-                    user_ids.append(user_id)
-                    item_ids.append(item_id)
-                    ratings.append(rating)
-        
-        self.df = pd.DataFrame(
-            {
-                'userID': user_ids,
-                'itemID': item_ids,
-                'rating': ratings
-            }
-        )
-        user_list = list(self.df['userID'].drop_duplicates())
-        item_list = list(self.df['itemID'].drop_duplicates())
-        self.item2index = {w: i for i, w in enumerate(item_list)}
-        self.index2item = {i: w for i, w in enumerate(item_list)}
-        self.user2index = {w: i for i, w in enumerate(user_list)}
-        self.index2user = {i: w for i, w in enumerate(user_list)}
-        df_reindex = self.df.copy()
-        df_reindex['userID'] = self.df['userID'].apply(lambda x: self.user2index[x])
-        df_reindex['itemID'] = self.df['itemID'].apply(lambda x: self.item2index[x])
+        df = temp_df.explode('itemID')
+        df.reset_index(drop=True)
+        user_map, item_map = self.create_index_map(X, y)
+        df_reindex = df.copy()
+        df_reindex['userID'] = df['userID'].apply(lambda x: user_map[0][x])
+        df_reindex['itemID'] = df['itemID'].apply(lambda x: item_map[0][x])
         return df_reindex
     
-    def train_model(self):
+    def train_model(self, train, negatives):
         """
         Train the model that is being attacked.
 
         Parameters
         ----------
-        data: data object
-        
+        train:
+        negatives:
         Returns
         -------
         Trained model
 
         """
-        self.model = NCF(
-            n_users=self.data.n_users,
-            n_items=self.data.n_items,
-            model_type=self.model_name,
-            n_factors=self.n_factors,
-            layer_sizes=self.layers,
-            n_epochs=self.epochs,
-            batch_size=self.batch_size,
-            learning_rate=self.learning_rate,
-            verbose=10)
-        return self.model.fit(self.data)
+        num_users = train.userID.nunique()
+        num_items = train.itemID.nunique()
+        self.model = self.get_model(num_users, num_items)
+        train_loader = self.get_train_instance(train, negatives)
+        loss_function = nn.BCELoss()
+        optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+        for epoch in range(1, self.epochs):
+            for user, item, label in train_loader:
+                optimizer.zero_grad()
+                prediction = self.model(user, item)
+                loss = loss_function(prediction, label)
+                loss.backward()
+                optimizer.step()
     
-    def test_model(self, test, predictions):
+    def test_model(self, test, negatives):
         """
         Test the model that is being attacked.
 
         Parameters
         ----------
-        test: {array-like, sparse matrix} of shape (n_samples, n_features),
-            where ``n_samples`` is the number of samples and ``n_features`` is the number of features.
-            Input variables of the test set for the target model.
-        predictions: ndarray of shape (n_samples,)
-            Output labels of the test set for the target model.
+        test:
+        negatives:
         """
-        eval_map = map(test, predictions, k=self.top_k)
-        eval_ndcg = ndcg_at_k(test, predictions, k=self.top_k)
-        eval_precision = precision_at_k(test, predictions, k=self.top_k)
-        eval_recall = recall_at_k(test, predictions, k=self.top_k)
-        return eval_map, eval_ndcg, eval_precision, eval_recall
+        self.model.eval()
+        test_loader = self.get_test_instance(test, negatives)
+        with torch.no_grad():
+            HR, NDCG = self.metrics(self.model, test_loader, self.top_k)
+        return HR, NDCG
     
-    def get_hit_rate(self):
-        """
-        Gets hit rate.
-        """
-        k = self.top_k
-        
-        ndcg = []
-        hit_ratio = []
-        
-        for test in self.data.test_loader():
-            user_input, item_input, labels = test
-            output = self.model.predict(user_input, item_input, is_list=True)
-            output = np.squeeze(output)
-            rank = sum(output >= output[0])
-            if rank <= k:
-                ndcg.append(1 / np.log(rank + 1))
-                hit_ratio.append(1)
-            else:
-                ndcg.append(0)
-                hit_ratio.append(0)
-        
-        eval_ndcg = np.mean(ndcg)
-        eval_hr = np.mean(hit_ratio)
-        return eval_ndcg, eval_hr
+    @staticmethod
+    def hit(ng_item, pred_items):
+        if ng_item in pred_items:
+            return 1
+        return 0
     
-    def get_predictions_user(self, user_id, items_id):
+    @staticmethod
+    def ndcg(ng_item, pred_items):
+        if ng_item in pred_items:
+            index = pred_items.index(ng_item)
+            return np.reciprocal(np.log2(index + 2))
+        return 0
+    
+    def metrics(self, model, test_loader, top_k):
+        HR, NDCG = [], []
+        for user, item, label in test_loader:
+            predictions = model(user, item)
+            _, indices = torch.topk(predictions, top_k)
+            recommends = torch.take(
+                item, indices).cpu().numpy().tolist()
+            ng_item = item[0].item()  # leave one-out evaluation has only one item per user
+            HR.append(self.hit(ng_item, recommends))
+            NDCG.append(self.ndcg(ng_item, recommends))
+        
+        return np.mean(HR), np.mean(NDCG)
+    
+    def get_predictions_user(self, all_items_reindexed, user_id, items_id):
         """
         Gets model prediction for a single user.
 
         Parameters
         ----------
         user_id: An integer representing the user id.
-        
+        items_id: List of item ids that the user interacted with.
         Returns
         ----------
         sorted_predictions_reindex: List of items recommended to the user.
         """
-        user_indexed = self.user2index[user_id]
-        user_indexed_list = [user_indexed] * len(items_id)
-        items_not_rated = self.df[~self.df['itemID'].isin(items_id)]
-        items_not_rated_indexed = [self.item2index[item] for item in items_not_rated]
-        predictions = self.model.predict(user_indexed_list, items_not_rated_indexed, is_list=True)
-        sorted_predictions = [x for _, x in sorted(zip(predictions, items_not_rated_indexed), reverse=True)]
-        sorted_predictions_reindex = [self.index2item[item] for item in sorted_predictions]
-        return sorted_predictions_reindex
-    
-    def get_predictions(self, train):
-        """
-        Gets model prediction for number of users.
-
-        Parameters
-        ----------
-        train: pandas.Dataframe object with three columns userId, itemID and rating.
-
-        Returns
-        -------
-        all_predictions: pandas.DataFrame object with user, item and the corresponding score from the model.
-        """
-        users, items, predictions = [], [], []
-        item = list(train.itemID.unique())
-        for user in train.userID.unique():
-            user = [user] * len(item)
-            users.extend(user)
-            items.extend(item)
-            predictions.extend(list(self.model.predict(user, item, is_list=True)))
+        items_not_rated = all_items_reindexed[all_items_reindexed['itemID'].isin(items_id)]
+        user_list = [user_id] * len(items_not_rated)
+        predictions = self.model.predict(user_list, items_not_rated, is_list=True)
+        sorted_predictions = [x for _, x in sorted(zip(predictions, items_not_rated), reverse=True)]
+        return sorted_predictions
         
-        all_predictions = pd.DataFrame(data={"userID": users, "itemID": items, "prediction": predictions})
-        
-        merged = pd.merge(train, all_predictions, on=["userID", "itemID"], how="outer")
-        all_predictions = merged[merged.rating.isnull()].drop('rating', axis=1)
-        return all_predictions
-    
     def save_model(self, filename):
         """
         Save model.
@@ -286,50 +282,77 @@ class CFModel:
         """
         self.model = self.model.load(filename)
     
-    def get_most_popular(self, items):
+    def get_most_popular(self, all_items, interactions):
         """
         Recommends the most popular items.
 
         Parameters
         ----------
-        items: Items that the user has interacted with
 
         Returns
         -------
         top_recommendations: List of top_k most popular recommendations sans the items the user has already interacted
         with.
         """
-        
-        item_popularity = self.df['itemID'].value_counts().reset_index()
+        all_items_df = all_items.explode('itemID')
+        item_popularity = all_items_df['itemID'].value_counts().reset_index()
         item_popularity.columns = ['itemID', 'interaction_count']
-        # Filter out items the user has already interacted with
-        recommended_items = item_popularity[~item_popularity['itemID'].isin(items)]
-        # Get the top N popular items
+        recommended_items = item_popularity[~item_popularity['itemID'].isin(interactions)]
         top_recommendations = recommended_items.head(self.top_k)['itemID'].tolist()
         return top_recommendations
 
 
-class NeuMF(CFModel):
-    def __init__(self, top_k, n_factors, layers, epochs, batch_size, lr):
-        super(NeuMF, self).__init__(top_k, n_factors, layers, epochs, batch_size, lr)
+class NCFTargetModel(CFModel):
+    def __init__(self, top_k, layers, latent_dim, epochs, batch_size, lr, num_negatives, num_negatives_test):
+        self.top_k = top_k
+        self.layers = layers
+        self.latent_dim = latent_dim
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.lr = lr
+        self.num_ng = num_negatives
+        self.num_ng_test = num_negatives_test
+        super(NCFTargetModel, self).__init__(top_k, batch_size, epochs, lr, num_negatives, num_negatives_test)
     
-    # return self.model.fit(x_train, y_train)
+    def get_model(self, num_users, num_items):
+        return NeuralCollaborativeFiltering(num_users, num_items, self.layers)
+    
     def get_model_name(self):
-        return "NeuMF"
+        return "NCF"
 
 
-class GMF(CFModel):
-    def __init__(self, top_k, n_factors, layers, epochs, batch_size, lr):
-        super(GMF, self).__init__(top_k, n_factors, layers, epochs, batch_size, lr)
+class GMFTargetModel(CFModel):
+    def __init__(self, top_k, latent_dim, epochs, batch_size, lr, num_negatives, num_negatives_test):
+        self.top_k = top_k
+        self.latent_dim = latent_dim
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.lr = lr
+        self.num_ng = num_negatives
+        self.num_ng_test = num_negatives_test
+        super(GMFTargetModel, self).__init__(top_k, batch_size, epochs, lr, num_negatives, num_negatives_test)
     
-    # return self.model.fit(x_train, y_train)
+    def get_model(self, num_users, num_items):
+        return GeneralizedMatrixFactorization(num_users, num_items, self.latent_dim)
+    
     def get_model_name(self):
         return "GMF"
 
 
-class MLP(CFModel):
-    def __init__(self, top_k, n_factors, layers, epochs, batch_size, lr):
-        super(MLP, self).__init__(top_k, n_factors, layers, epochs, batch_size, lr)
+class MLPTargetModel(CFModel):
+    def __init__(self, top_k, layers, latent_dim, epochs, batch_size, lr, num_negatives, num_negatives_test):
+        self.top_k = top_k
+        self.layers = layers
+        self.latent_dim = latent_dim
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.lr = lr
+        self.num_ng = num_negatives
+        self.num_ng_test = num_negatives_test
+        super(MLPTargetModel, self).__init__(top_k, batch_size, epochs, lr, num_negatives, num_negatives_test)
+    
+    def get_model(self, num_users, num_items):
+        return MultiLayerPerceptron(num_users, num_items, self.layers)
     
     def get_model_name(self):
         return "MLP"

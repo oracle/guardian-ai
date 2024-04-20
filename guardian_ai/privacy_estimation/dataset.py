@@ -129,7 +129,11 @@ class TargetCFData:
             X_target_members,
             y_target_members,
             X_target_non_members,
-            y_target_non_members
+            y_target_non_members,
+            user_map_members,
+            item_map_members,
+            user_map_non_members,
+            item_map_non_members
     ):
         """
         Create Target Model Data
@@ -873,7 +877,8 @@ class CFDataset(Dataset):
         # extract all the items
         unique_users = self.df['userID'].unique()
         unique_items = self.df['itemID'].unique()
-        selected_users = np.random.choice(unique_users, size=int(len(unique_users)* 0.3))#* dataset_split_ratios[CFDataSplit.ITEM_DATASET.name]))
+        selected_users = np.random.choice(unique_users, size=int(
+            len(unique_users) * 0.3))  # * dataset_split_ratios[CFDataSplit.ITEM_DATASET.name]))
         # Filter the DataFrame to include only selected users
         filtered_df = self.df[self.df['userID'].isin(selected_users)]
         missing_items = set(unique_items) - set(filtered_df['itemID'])
@@ -913,17 +918,9 @@ class CFDataset(Dataset):
         """
         item_features_users = self.item_features['userID'].unique()
         dataset = self.df[~self.df['userID'].isin(item_features_users)]
-        pivot_table = dataset.pivot(index="userID", columns="itemID", values="rating").fillna(0)
-        unique_item_ids = sorted(dataset['itemID'].unique())
-        pivot_table = pivot_table.reindex(columns=unique_item_ids, fill_value=0)
-        dataset = pd.DataFrame(
-            {
-                'userID': pivot_table.index,
-                'interactions': pivot_table.values.tolist()
-            }
-        )
-        self.df_x = dataset[['userID']].copy()
-        self.df_y = dataset[['interactions']].copy()
+        transformed_dataset = dataset.sort_values('timestamp').groupby('userID')['itemID'].apply(list).reset_index()
+        self.df_x = transformed_dataset[['userID']].copy()
+        self.df_y = transformed_dataset[['itemID']].copy()
     
     def prepare_target_and_attack_data(
             self,
@@ -956,8 +953,10 @@ class CFDataset(Dataset):
         """
         X_shadow_members, y_shadow_members = self.splits[CFDataSplit.ATTACK_TRAIN_IN.name]
         X_shadow_non_members, y_shadow_non_members = self.splits[CFDataSplit.ATTACK_TRAIN_OUT.name]
+        
         X_target_members, y_target_members = self.splits[CFDataSplit.TARGET_TRAIN_MEMBERS.name]
         X_target_non_members, y_target_non_members = self.splits[CFDataSplit.TARGET_NON_MEMBERS.name]
+        
         self.target_model_data = TargetCFData(
             X_target_members,
             y_target_members,

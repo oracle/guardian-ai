@@ -35,6 +35,18 @@ class CFAttack(BlackBoxAttack):
         self.X_membership_train = None  # Useful for caching the feature values for the attack (e.g. Morgan attack)
         self.X_membership_test = None
     
+    @staticmethod
+    def create_index_map(X, y):
+        user_ids = X.userID.unique()
+        exploded_df = y.explode('itemID')  # Getting unique item IDs
+        item_ids = exploded_df['itemID'].unique()  # Convert to list if you need it as a list
+        user_map = [{original_id: index + 1 for index, original_id in enumerate(user_ids)},
+                    {index + 1: original_id for index, original_id in enumerate(user_ids)}]
+        item_map = [{original_id: index + 1 for index, original_id in enumerate(item_ids)},
+                    {index + 1: original_id for index, original_id in enumerate(item_ids)}]
+        
+        return user_map, item_map
+    
     def transform_attack_data(
             self,
             target_model: CFModel,
@@ -78,10 +90,16 @@ class CFAttack(BlackBoxAttack):
 
         """
         user_attributes = []
+        user_map, item_map, X_mapped, y_mapped = self.create_index_map(X_attack, y_attack)
         for user, items, label in zip(X_attack.tolist(), y_attack.tolist(), y_membership):
-            recommendations = target_model.get_predictions_user(user,
-                                                                items) if label == 1 else target_model.get_most_popular(
-                items)
+            user_mapped = user_map[0][user]
+            items_mapped = [item_map[0][i] for i in items]
+            if label == 1:
+                recommendations_mapped = target_model.get_predictions_user(y_mapped, user_mapped, items_mapped)
+                recommendations = [item_map[1][rec] for rec in recommendations_mapped]
+            else:
+                recommendations = target_model.get_most_popular(y_attack, items)
+                
             top_k = len(recommendations)
             interaction_vector = np.mean([features[m] for m in items], axis=0)
             recommendation_vector = np.zeros(len(features[0]))

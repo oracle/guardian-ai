@@ -78,31 +78,19 @@ class AttackRunner:
             print("Target Model: " + target_model.get_model_name())
             target_model_data: TargetCFData = self.dataset.target_model_data
             user_item_df = target_model.reindex(target_model_data.X_target_members,
-                                                target_model_data.y_target_members)
-            train, test = target_model.train_test_split(user_item_df)
-            target_model.data_object(train, test)
-            target_model.train_model()
-            predictions = target_model.get_predictions(train)
+                                                target_model_data.y_target_member)
+            train, test, negatives = target_model.train_test_split(user_item_df)
+            target_model.train_model(train, negatives)
             print("Target Model Train Evaluation: ")
-            (eval_map, eval_ndcg, eval_precision, eval_recall) = target_model.test_model(test, predictions)
-            print("MAP:\t%f" % eval_map,
-                  "NDCG:\t%f" % eval_ndcg,
-                  "Precision@K:\t%f" % eval_precision,
-                  "Recall@K:\t%f" % eval_recall, sep='\n')
-            
-            hit_rate, _ = target_model.get_hit_rate()
+            (hit_rate, ndcg) = target_model.test_model(test, negatives)
+            print("Hit Rate:\t%f" % hit_rate,
+                  "NDCG:\t%f" % ndcg, sep='\n')
             result_string = (
                     target_model.get_model_name()
                     + "\t"
-                    + str(eval_map)
-                    + "\t"
-                    + str(eval_ndcg)
-                    + "\t"
-                    + str(eval_precision)
-                    + "\t"
-                    + str(eval_recall)
-                    + "\t"
                     + str(hit_rate)
+                    + "\t"
+                    + str(ndcg)
             )
             
             self.target_model_result_strings[
@@ -115,30 +103,18 @@ class AttackRunner:
             shadow_model_data: TargetCFData = self.dataset.shadow_model_data
             user_item_df = shadow_model.reindex(shadow_model_data.X_target_members,
                                                 shadow_model_data.y_target_members)
-            train, test = shadow_model.train_test_split(user_item_df)
-            shadow_model.data_object(train, test)
-            shadow_model.train_model()
-            predictions = shadow_model.get_predictions(train)
-            print("Target Model Train Evaluation: ")
-            (eval_map, eval_ndcg, eval_precision, eval_recall) = shadow_model.test_model(test, predictions)
-            print("MAP:\t%f" % eval_map,
-                  "NDCG:\t%f" % eval_ndcg,
-                  "Precision@K:\t%f" % eval_precision,
-                  "Recall@K:\t%f" % eval_recall, sep='\n')
-            
-            hit_rate, _ = shadow_model.get_hit_rate()
+            train, test, negatives = shadow_model.train_test_split(user_item_df)
+            shadow_model.train_model(train, negatives)
+            print("Shadow Model Train Evaluation: ")
+            (hit_rate, ndcg) = shadow_model.test_model(test, negatives)
+            print("Hit Rate:\t%f" % hit_rate,
+                  "NDCG:\t%f" % ndcg, sep='\n')
             result_string = (
-                    shadow_model.get_model_name()
-                    + "\t"
-                    + str(eval_map)
-                    + "\t"
-                    + str(eval_ndcg)
-                    + "\t"
-                    + str(eval_precision)
-                    + "\t"
-                    + str(eval_recall)
+                    target_model.get_model_name()
                     + "\t"
                     + str(hit_rate)
+                    + "\t"
+                    + str(ndcg)
             )
             
             self.shadow_model_result_strings[
