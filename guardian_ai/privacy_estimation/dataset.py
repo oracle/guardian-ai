@@ -873,7 +873,7 @@ class CFDataset(Dataset):
         # extract all the items
         unique_users = self.df['userID'].unique()
         unique_items = self.df['itemID'].unique()
-        selected_users = np.random.choice(unique_users, size=int(len(unique_users) * dataset_split_ratios[CFDataSplit.ITEM_DATASET.name]))
+        selected_users = np.random.choice(unique_users, size=int(len(unique_users)* 0.3))#* dataset_split_ratios[CFDataSplit.ITEM_DATASET.name]))
         # Filter the DataFrame to include only selected users
         filtered_df = self.df[self.df['userID'].isin(selected_users)]
         missing_items = set(unique_items) - set(filtered_df['itemID'])

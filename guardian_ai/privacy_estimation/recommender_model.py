@@ -17,7 +17,7 @@ class CFModel:
     
     """
     
-    def __init__(self, top_k):
+    def __init__(self, top_k, n_factors, layers, epochs, batch_size, lr):
         """
         Create the target model that is being attacked.
         Parameters
@@ -47,15 +47,21 @@ class CFModel:
         self.user2index = None
         self.item2index = None
         self.index2item = None
+        self.model = None
+        self.n_factors = n_factors
+        self.layers = layers
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.learning_rate = lr
         self.top_k = top_k
-        self.model = self.get_model()
+        self.model_name = self.get_model_name()
     
     @abstractmethod
     def get_model_name(self):
         """Get default model name."""
         pass
     
-    def train_test_split(self):
+    def train_test_split(self, df_reindex):
         """
         Split the dataframe into train and test datasets.
         Return
@@ -64,8 +70,8 @@ class CFModel:
             - the first dataframe contains the training dataset with columns userId, itemId, rating
             - the second dataframe contains the test dataset with columns userId, itemId, rating
         """
-        train, test = python_stratified_split(self.df, 0.8)
-        assert self.df.userID.nunique() == train.userID.nunique() == test.userID.nunique()
+        train, test = python_stratified_split(df_reindex, 0.8)
+        assert df_reindex.userID.nunique() == train.userID.nunique() == test.userID.nunique()
         return train, test
     
     def data_object(self, train, test):
@@ -85,6 +91,7 @@ class CFModel:
         leave_one_out_test_file = "./leave_one_out_test.csv"
         train.to_csv(train_file, index=False)
         test.to_csv(test_file, index=False)
+        print (test)
         leave_one_out_test.to_csv(leave_one_out_test_file, index=False)
         self.data = NCFDataset(train_file=train_file, test_file=leave_one_out_test_file, seed=SEED,
                                overwrite_test_file_full=True)
@@ -109,11 +116,13 @@ class CFModel:
         -------
         train: Transformed pandas.dataframe object containing three columns userId, itemID and rating.
         """
-        user_ids = [], item_ids = [], ratings = []
+        user_ids = []
+        item_ids = []
+        ratings = []
         temp_df = pd.concat([X, y], axis=1)
         for index, row in temp_df.iterrows():
-            user_id = row['user_id']
-            interactions = row['item_list']
+            user_id = row['userID']
+            interactions = row['interactions']
             for item_id, rating in enumerate(interactions, start=1):
                 if rating != 0:
                     user_ids.append(user_id)
@@ -138,7 +147,7 @@ class CFModel:
         df_reindex['itemID'] = self.df['itemID'].apply(lambda x: self.item2index[x])
         return df_reindex
     
-    def train_model(self, data):
+    def train_model(self):
         """
         Train the model that is being attacked.
 
@@ -151,7 +160,17 @@ class CFModel:
         Trained model
 
         """
-        return self.model.fit(data)
+        self.model = NCF(
+            n_users=self.data.n_users,
+            n_items=self.data.n_items,
+            model_type=self.model_name,
+            n_factors=self.n_factors,
+            layer_sizes=self.layers,
+            n_epochs=self.epochs,
+            batch_size=self.batch_size,
+            learning_rate=self.learning_rate,
+            verbose=10)
+        return self.model.fit(self.data)
     
     def test_model(self, test, predictions):
         """
@@ -280,7 +299,7 @@ class CFModel:
         top_recommendations: List of top_k most popular recommendations sans the items the user has already interacted
         with.
         """
-
+        
         item_popularity = self.df['itemID'].value_counts().reset_index()
         item_popularity.columns = ['itemID', 'interaction_count']
         # Filter out items the user has already interacted with
@@ -291,25 +310,8 @@ class CFModel:
 
 
 class NeuMF(CFModel):
-    def __init__(self, n_factors, layers, epochs, batch_size, lr, top_k):
-        self.n_factors = n_factors
-        self.layers = layers
-        self.epochs = epochs
-        self.batch_size = batch_size
-        self.learning_rate = lr
-        super(NeuMF, self).__init__(top_k)
-    
-    def get_model(self):
-        return NCF(
-            n_users=self.data.n_users,
-            n_items=self.data.n_items,
-            model_type="NeuMF",
-            n_factors=self.n_factors,
-            layer_sizes=self.layers,
-            n_epochs=self.epochs,
-            batch_size=self.batch_size,
-            learning_rate=self.learning_rate,
-            verbose=10)
+    def __init__(self, top_k, n_factors, layers, epochs, batch_size, lr):
+        super(NeuMF, self).__init__(top_k, n_factors, layers, epochs, batch_size, lr)
     
     # return self.model.fit(x_train, y_train)
     def get_model_name(self):
@@ -317,25 +319,8 @@ class NeuMF(CFModel):
 
 
 class GMF(CFModel):
-    def __init__(self, n_factors, layers, epochs, batch_size, lr, top_k):
-        self.n_factors = n_factors
-        self.layers = layers
-        self.epochs = epochs
-        self.batch_size = batch_size
-        self.learning_rate = lr
-        super(GMF, self).__init__(top_k)
-    
-    def get_model(self):
-        return NCF(
-            n_users=self.data.n_users,
-            n_items=self.data.n_items,
-            model_type="GMF",
-            n_factors=self.n_factors,
-            layer_sizes=self.layers,
-            n_epochs=self.epochs,
-            batch_size=self.batch_size,
-            learning_rate=self.learning_rate,
-            verbose=10)
+    def __init__(self, top_k, n_factors, layers, epochs, batch_size, lr):
+        super(GMF, self).__init__(top_k, n_factors, layers, epochs, batch_size, lr)
     
     # return self.model.fit(x_train, y_train)
     def get_model_name(self):
@@ -343,26 +328,8 @@ class GMF(CFModel):
 
 
 class MLP(CFModel):
-    def __init__(self, n_factors, layers, epochs, batch_size, lr, top_k):
-        self.n_factors = n_factors
-        self.layers = layers
-        self.epochs = epochs
-        self.batch_size = batch_size
-        self.learning_rate = lr
-        super(MLP, self).__init__(top_k)
+    def __init__(self, top_k, n_factors, layers, epochs, batch_size, lr):
+        super(MLP, self).__init__(top_k, n_factors, layers, epochs, batch_size, lr)
     
-    def get_model(self):
-        return NCF(
-            n_users=self.data.n_users,
-            n_items=self.data.n_items,
-            model_type="MLP",
-            n_factors=self.n_factors,
-            layer_sizes=self.layers,
-            n_epochs=self.epochs,
-            batch_size=self.batch_size,
-            learning_rate=self.learning_rate,
-            verbose=10)
-    
-    # return self.model.fit(x_train, y_train)
     def get_model_name(self):
         return "MLP"
