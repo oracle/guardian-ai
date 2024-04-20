@@ -26,8 +26,11 @@ print("Running Dataset: " + dataset_name)
 dataset = RecommenderDataset(dataset_name)
 dataset.load_data(os.path.join(source_dir,users_name),
                   os.path.join(source_dir, items_name),
-                  os.path.join(source_dir,ratings_name))
-dataset.perform_matrix_factorization(20)
+                  os.path.join(source_dir,ratings_name),
+                  items_columns=['MovieID', 'Title', 'Genres'],
+                  ratings_columns=['user_id', 'item_id', 'rating', 'timestamp'])
+dataset.split_dataset()
+# dataset.perform_matrix_factorization(20)
 # string for reporting in the result file
 # result_dataset = dataset_name + "\t" + str(dataset.get_num_rows())
 

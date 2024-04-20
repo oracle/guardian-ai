@@ -1,11 +1,12 @@
 import pandas as pd
+pd.options.mode.chained_assignment = None
 from typing import List
 from dataset import Dataset
 from sklearn.decomposition import NMF
 import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import svds
-
+from sklearn.model_selection import GroupShuffleSplit
 
 
 class RecommenderDataset(Dataset):
@@ -45,11 +46,34 @@ class RecommenderDataset(Dataset):
        self.ratings = self.ratings.astype(int)
        self.users = self.load_csv_or_dat(users_file)
 
+    @staticmethod
+    def split_helper(data, train_size=0.8, group_id='user_id'):
+        gss = GroupShuffleSplit(n_splits=2, train_size=train_size, random_state=42)
+        split = (gss.split(data, None, groups=data[group_id]))
+        group1_inds, group2_inds = next(split)
+        group1 = data.iloc[group1_inds]
+        group2 = data.iloc[group2_inds]
+        return group1, group2
+
+    def split_dataset(self):
+        members, non_members = self.split_helper(self.ratings)
+        members['label'] = 0
+        non_members['label'] = 1
+
+        target_members, shadow_members = self.split_helper(members, train_size=0.5)
+        target_non_members, shadow_non_members = self.split_helper(non_members, train_size=0.5)
+
+        self.target_model_data = pd.concat([target_members, target_non_members])
+        self.shadow_model_data = pd.concat([shadow_members, shadow_non_members])
+        
+        print(self.target_model_data)
+        print(self.shadow_model_data)
+
+    
+    
     def perform_matrix_factorization(self, num_components):
-        x = self.ratings[['user_id', 'item_id']].values
         min_rating = min(self.ratings['rating'])
         max_rating = max(self.ratings['rating'])
-        y = self.ratings["rating"].apply(lambda x: (x - min_rating) / (max_rating - min_rating)).values
     
         R_df = self.ratings.pivot(index = 'user_id', columns ='item_id', values = 'rating')
         R_df = R_df.fillna(R_df.mean())
