@@ -71,14 +71,11 @@ class RecommenderDataset(Dataset):
         print(self.shadow_model_data)
 
     
-    
-    def perform_matrix_factorization(self, num_components):
-        min_rating = min(self.ratings['rating'])
-        max_rating = max(self.ratings['rating'])
-    
-        R_df = self.ratings.pivot(index = 'user_id', columns ='item_id', values = 'rating')
+    @staticmethod
+    def perform_matrix_factorization(data, num_components):
+        R_df = data.pivot(index = 'user_id', columns ='item_id', values = 'rating')
         R_df = R_df.fillna(R_df.mean())
-
+        
         mtrx = R_df.to_numpy()
         ratings_mean = np.mean(mtrx, axis = 1)
         R_demeaned = mtrx - ratings_mean.reshape(-1, 1)

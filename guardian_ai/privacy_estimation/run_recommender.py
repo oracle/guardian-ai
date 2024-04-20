@@ -30,7 +30,8 @@ dataset.load_data(os.path.join(source_dir,users_name),
                   items_columns=['MovieID', 'Title', 'Genres'],
                   ratings_columns=['user_id', 'item_id', 'rating', 'timestamp'])
 dataset.split_dataset()
-# dataset.perform_matrix_factorization(20)
+# dataset.attack_model_data)
+dataset.perform_matrix_factorization(dataset.target_model_data, 20)
 # string for reporting in the result file
 # result_dataset = dataset_name + "\t" + str(dataset.get_num_rows())
 
