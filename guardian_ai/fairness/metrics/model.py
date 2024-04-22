@@ -338,6 +338,7 @@ class ModelStatisticalParityScorer(_AllGroupPairsModelFairnessScorer):  # noqa: 
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str, default='mean'
@@ -466,6 +467,7 @@ def model_statistical_parity(
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -560,6 +562,7 @@ class TruePositiveRateScorer(_AllGroupPairsModelFairnessScorer):
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -624,9 +627,12 @@ def true_positive_rate(
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
         the rest of the population. Possible values are:
+
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
+
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
         Possible values are:
@@ -696,6 +702,7 @@ class FalsePositiveRateScorer(_AllGroupPairsModelFairnessScorer):
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -706,11 +713,12 @@ class FalsePositiveRateScorer(_AllGroupPairsModelFairnessScorer):
             * ``'mean'``: Returns the mean over all subgroup metrics.
             * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
+
     References
     ----------
     [1] `Alexandra Chouldechova. "Fair Prediction with Disparate Impact: A Study
     of Bias in Recidivism Prediction Instruments". Big Data (2016).
-    <https://www.liebertpub.com/doi/10.1089/big.2016.0047`_
+    <https://www.liebertpub.com/doi/10.1089/big.2016.0047>`_
 
     Examples
     --------
@@ -763,6 +771,7 @@ def false_positive_rate(
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -834,6 +843,7 @@ class FalseNegativeRateScorer(_AllGroupPairsModelFairnessScorer):
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -901,6 +911,7 @@ def false_negative_rate(
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -972,6 +983,7 @@ class FalseOmissionRateScorer(_AllGroupPairsModelFairnessScorer):
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -1033,6 +1045,7 @@ def false_omission_rate(
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -1105,6 +1118,7 @@ class FalseDiscoveryRateScorer(_AllGroupPairsModelFairnessScorer):
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str, default='mean'
@@ -1166,6 +1180,7 @@ def false_discovery_rate(
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -1238,6 +1253,7 @@ class ErrorRateScorer(_AllGroupPairsModelFairnessScorer):
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -1299,6 +1315,7 @@ def error_rate(
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -1376,6 +1393,7 @@ class EqualizedOddsScorer(_AllGroupPairsModelFairnessScorer):
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -1443,6 +1461,7 @@ def equalized_odds(
 
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
@@ -1518,9 +1537,12 @@ class TheilIndexScorer(_AllGroupPairsModelFairnessScorer):
     distance_measure : str or None, default=None
         Determines the distance used to compare a subgroup's metric against
         the rest of the population. Possible values are:
+
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
+
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
         Possible values are:
@@ -1587,6 +1609,7 @@ def theil_index(
         the rest of the population. Possible values are:
             * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
             Inverted to always be >= 1 if needed.
+
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'

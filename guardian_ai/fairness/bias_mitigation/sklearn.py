@@ -149,7 +149,7 @@ class ModelBiasMitigator:
         Whether or not ``base_estimator`` uses the protected attributes for
         inference. If set to ``False``, protected attributes will be removed
         from any input dataset before being collecting predictions from
-         ``base_estimator``.
+        ``base_estimator``.
     n_trials_per_group: int, default=100
         Number of different multiplying scalars to consider. Scales
         linearly with the number of groups in the data, i.e.
