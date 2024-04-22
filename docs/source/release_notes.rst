@@ -11,7 +11,7 @@ Release date: April 22, 2023
 
 **New Features and Enhancements:**
 
-* Enhanced bias mitigation to avoid solutions that levelling down (that is, making outcomes worse for) one or more groups to achieve fairness metric rate parity.
+* Enhanced bias mitigation to avoid solutions with levelling down (that is, making outcomes worse for) one or more groups to achieve fairness metric rate parity.
 
 * Added warm starting mechanism to bias mitigation to reduce the time required to find high-quality solution trade-offs.
 
