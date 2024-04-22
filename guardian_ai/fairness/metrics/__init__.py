@@ -38,13 +38,14 @@ from guardian_ai.fairness.metrics.model import (
     theil_index,
     true_positive_rate,
 )
-from guardian_ai.fairness.metrics.utils import _FairnessScorer
+from guardian_ai.fairness.metrics.utils import _FairnessScorer, _positive_fairness_names
 
 __all__ = [
     "_get_fairness_scorer",
     "fairness_scorers_dict",
     "_get_fairness_metric",
     "fairness_metrics_dict",
+    "_positive_fairness_names",
     "FairnessMetric",
     "_FairnessScorer",
     "DatasetStatisticalParityScorer",

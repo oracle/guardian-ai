@@ -31,9 +31,9 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
 ]
 dependencies = [
-    "numpy==1.22.2",
-    "pandas==1.4.1",
-    "scikit-learn==1.1.1",
+    "numpy",
+    "pandas",
+    "scikit-learn==1.3.2",
 ]
 
 [project.optional-dependencies]
@@ -42,9 +42,10 @@ fairness = [
     "category-encoders==2.5.0",
     "optuna==3.2.0",
     "plotly==5.4.0",
+    "fairlearn==0.10.0",
 ]
 privacy = [
-    "scipy==1.8.1",
+    "scipy==1.10.0",
     "matplotlib==3.5.3",
 ]
 all-optional = [

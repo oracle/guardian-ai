@@ -37,10 +37,6 @@ else:
         "aif360.metrics", "BinaryLabelDatasetMetric", suppress_import_warnings=True
     )
 
-BinaryLabelDatasetMetric = LazyLoader(
-    "aif360.metrics", "BinaryLabelDatasetMetric", suppress_import_warnings=True
-)
-
 
 def _dataset_metric(
     y_true: Union[pd.Series, np.ndarray, List],
@@ -120,7 +116,6 @@ def _dataset_metric(
             scores.append(score)
             groups.append(group_repr)
             visited_subgroup_pairs.add(group_repr)
-
     return reduction(groups, scores)
 
 

@@ -19,9 +19,13 @@ from guardian_ai.fairness.metrics.utils import (
     _get_check_distance,
     _get_check_inputs,
     _get_check_reduction,
+    _get_check_reduction_distance_subgroups,
     _get_score_group_from_metrics,
     _place_space_before_capital_letters,
     _y_to_aifm_ds,
+    _get_rate_scorer,
+    _inhouse_metrics,
+    _aif360_to_automl_metric_names,
 )
 from guardian_ai.utils.exception import GuardianAIValueError
 
@@ -36,6 +40,16 @@ else:
         "aif360.metrics", "ClassificationMetric", suppress_import_warnings=True
     )
 
+_valid_regression_metrics = [
+    "TPR",
+    "statistical_parity",
+    "FPR",
+    "FNR",
+    "FOR",
+    "FDR",
+    "error_rate",
+]
+
 
 def _model_metric(
     y_true: Optional[Union[pd.Series, np.ndarray, List]],
@@ -48,9 +62,9 @@ def _model_metric(
     allow_distance_measure_none: bool,
 ):
     """
-    Compute engine for all model metrics.
+    Compute engine for all group pairs model metrics.
 
-    This computes a given metric on all subgroup pairs for a specified ``subgroups`` input.
+    This computes a given metric on all group pairs for a specified ``subgroups`` input.
 
     Parameters
     ----------
@@ -64,10 +78,11 @@ def _model_metric(
         Name of the base metric to be called.
     distance_measure : str or None
         Determines the distance used to compare a subgroup's metric
-        against the rest of the subgroups. Possible values are:
+        against the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
             Only allowed if `allow_distance_measure_none` is set to True
     reduction : str or None
         Determines how to reduce scores on all subgroups to
@@ -75,7 +90,7 @@ def _model_metric(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
     allow_y_true_none : bool
         Whether or not to allow `y_true` to be set to ``None``.
     allow_distance_measure_none : bool
@@ -90,56 +105,94 @@ def _model_metric(
 
     """
     y_true, y_pred = _get_check_arrays(y_true, y_pred, allow_y_true_none)
-    (
-        reduction,
-        distance,
-        attr_vals_to_idx,
-        attr_idx_to_vals,
-        subgroup_divisions,
-    ) = _get_check_inputs(
-        reduction, distance_measure, subgroups, allow_distance_measure_none
-    )
 
-    ds_pred = _y_to_aifm_ds(y_pred, subgroups, attr_vals_to_idx)
+    if _aif360_to_automl_metric_names[metric] in _inhouse_metrics:
+        # We can calcualte the simple rate-based metrics 1-2 orders of
+        # magnitude faster than AIF360 does for some reason
+        reduction, distance = _get_check_reduction_distance_subgroups(
+            reduction, distance_measure, subgroups, allow_distance_measure_none
+        )
 
-    # Certain metrics like statistical disparity don't use ground truth labels.
-    # AIF360 still needs a labels dataset, so we copy the predicted dataset.
-    if y_true is None:
-        ds_true = ds_pred.copy()
+        rate_scorer = _get_rate_scorer(_aif360_to_automl_metric_names[metric])
+
+        rates = {}
+        for group, _ in subgroups.groupby(list(subgroups.columns)):
+            mask = (subgroups == group).all(1).to_numpy().squeeze()
+            group = group if len(group) > 1 else group[0]
+            rates[group] = rate_scorer(
+                y_true[mask] if y_true is not None else None,
+                y_pred[mask],
+            )
+
+        groups = []
+        scores = []
+        visited_subgroup_pairs = set()
+        for group1 in sorted(rates):
+            for group2 in sorted(rates):
+                if group1 == group2:
+                    continue
+
+                group_repr = (group1, group2)
+
+                if (group_repr[1], group_repr[0]) not in visited_subgroup_pairs:
+                    score = distance.from_raw_scores(rates[group1], rates[group2])
+                    scores.append(score)
+                    groups.append(group_repr)
+                    visited_subgroup_pairs.add(group_repr)
+
     else:
-        ds_true = _y_to_aifm_ds(y_true, subgroups, attr_vals_to_idx)
-
-    groups = []
-    scores = []
-    visited_subgroup_pairs = set()
-    # subgroup_divisions is a list of all subgroup pairs,
-    # e.g. [([{'sex': 0, 'race': 0}], [{'sex': 0, 'race': 1}]), ...]
-    for unpriv_group, priv_group in subgroup_divisions:
-        subgroup_metrics = ClassificationMetric(
-            ds_true, ds_pred, unpriv_group, priv_group
-        )
-
-        score, group_repr = _get_score_group_from_metrics(
-            subgroup_metrics,
+        # We don't support the more complicated metrics to implement
+        # so we rely on AIF360 for them.
+        (
+            reduction,
             distance,
-            metric,
-            unpriv_group,
-            priv_group,
+            attr_vals_to_idx,
             attr_idx_to_vals,
+            subgroup_divisions,
+        ) = _get_check_inputs(
+            reduction, distance_measure, subgroups, allow_distance_measure_none
         )
-        if (group_repr[1], group_repr[0]) not in visited_subgroup_pairs:
-            scores.append(score)
-            groups.append(group_repr)
-            visited_subgroup_pairs.add(group_repr)
+
+        ds_pred = _y_to_aifm_ds(y_pred, subgroups, attr_vals_to_idx)
+
+        # Certain metrics like statistical disparity don't use ground truth labels.
+        # AIF360 still needs a labels dataset, so we copy the predicted dataset.
+        if y_true is None:
+            ds_true = ds_pred.copy()
+        else:
+            ds_true = _y_to_aifm_ds(y_true, subgroups, attr_vals_to_idx)
+
+        groups = []
+        scores = []
+        visited_subgroup_pairs = set()
+        # subgroup_divisions is a list of all subgroup pairs,
+        # e.g. [([{'sex': 0, 'race': 0}], [{'sex': 0, 'race': 1}]), ...]
+        for unpriv_group, priv_group in subgroup_divisions:
+            subgroup_metrics = ClassificationMetric(
+                ds_true, ds_pred, unpriv_group, priv_group
+            )
+
+            score, group_repr = _get_score_group_from_metrics(
+                subgroup_metrics,
+                distance,
+                metric,
+                unpriv_group,
+                priv_group,
+                attr_idx_to_vals,
+            )
+            if (group_repr[1], group_repr[0]) not in visited_subgroup_pairs:
+                scores.append(score)
+                groups.append(group_repr)
+                visited_subgroup_pairs.add(group_repr)
 
     return reduction(groups, scores)
 
 
-class _ModelFairnessScorer(_FairnessScorer):
+class _AllGroupPairsModelFairnessScorer(_FairnessScorer):
     """
-    Common base object for all model metrics.
+    Common base object for all group pairs model metrics.
 
-    This stores settings to pass on to the ``_model_metric`` compute
+    This stores settings to pass on to the ``_all_group_pairs_model_metric`` compute
     engine and does subgroups generation from a `protected_attributes` array on
     an input array of instances ``X``.
 
@@ -153,18 +206,19 @@ class _ModelFairnessScorer(_FairnessScorer):
         Name of the base metric to be called.
     distance_measure : str or None, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroup pairs to a single output.
+        Determines how to reduce scores on all subgroups to a single output.
         Possible values are:
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     allow_distance_measure_none : bool, default=True
         Whether or not to allow ``distance_measure`` to be set to ``None``.
@@ -249,9 +303,10 @@ class _ModelFairnessScorer(_FairnessScorer):
         return _place_space_before_capital_letters(fullname)
 
 
-class ModelStatisticalParityScorer(_ModelFairnessScorer):  # noqa: D412
+class ModelStatisticalParityScorer(_AllGroupPairsModelFairnessScorer):  # noqa: D412
     """
-    Measure the statistical parity [1] of a model's output between all subgroup pairs.
+    Measure the statistical parity [1] of a model's output between subgroups
+    and the rest of the population.
 
     Statistical parity (also known as Base Rate or Disparate Impact) states that
     a predictor is unbiased if the prediction is independent of the protected
@@ -263,7 +318,7 @@ class ModelStatisticalParityScorer(_ModelFairnessScorer):  # noqa: D412
     Perfect score
         A perfect score for this metric means that the model does not predict
         positively any of the subgroups at a different rate than it does for the
-        rest of the subgroups. For example, if the protected attributes are race
+        rest of the population. For example, if the protected attributes are race
         and sex, then a perfect statistical parity would mean that all combinations
         of values for race and sex have identical ratios of positive predictions.
         Perfect values are:
@@ -279,10 +334,11 @@ class ModelStatisticalParityScorer(_ModelFairnessScorer):  # noqa: D412
         values are considered as subgroups.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -290,7 +346,7 @@ class ModelStatisticalParityScorer(_ModelFairnessScorer):  # noqa: D412
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
 
     References
@@ -391,7 +447,8 @@ def model_statistical_parity(
     reduction: Optional[str] = DEFAULT_REDUCTION,
 ):
     """
-    Measure the statistical parity of a model's output between all subgroup pairs.
+    Measure the statistical parity of a model's output between subgroups
+    and the rest of the population.
 
     For more details, refer to :class:`.ModelStatisticalParityScorer`.
 
@@ -405,10 +462,11 @@ def model_statistical_parity(
         Dataframe containing protected attributes for each instance.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -416,7 +474,7 @@ def model_statistical_parity(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     Returns
     -------
@@ -466,13 +524,13 @@ def model_statistical_parity(
     )
 
 
-class TruePositiveRateScorer(_ModelFairnessScorer):
+class TruePositiveRateScorer(_AllGroupPairsModelFairnessScorer):
     """
-    Measures the disparity of a model's true positive rate between
-    all subgroup pairs (also known as equal opportunity).
+    Measures the disparity of a model's true positive rate between subgroups
+    and the rest of the population (also known as equal opportunity).
 
     For each subgroup, the disparity is measured by comparing the true positive
-    rate on instances of a subgroup against the rest of the subgroups.
+    rate on instances of a subgroup against the rest of the population.
 
     True Positive Rate [1] (also known as TPR, recall, or sensitivity) is
     calculated as TP / (TP + FN), where TP and FN are the number of true
@@ -482,7 +540,7 @@ class TruePositiveRateScorer(_ModelFairnessScorer):
     Perfect score
         A perfect score for this metric means that the model does not correctly
         predict the positive class for any of the subgroups more often than it
-        does for the rest of the subgroups. For example, if the protected
+        does for the rest of the population. For example, if the protected
         attributes are race and sex, then a perfect true positive rate disparity
         would mean that all combinations of values for race and sex have
         identical true positive rates. Perfect values are:
@@ -498,10 +556,11 @@ class TruePositiveRateScorer(_ModelFairnessScorer):
         values are considered as subgroups.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -509,7 +568,7 @@ class TruePositiveRateScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     References
     ----------
@@ -549,7 +608,8 @@ def true_positive_rate(
     reduction: Optional[str] = DEFAULT_REDUCTION,
 ):
     """
-    Measures the disparity of a model's true positive rate between all subgroup pairs.
+    Measures the disparity of a model's true positive rate between subgroups
+    and the rest of the population.
 
     For more details, refer to :class:`.TruePositiveRateScorer`.
 
@@ -563,17 +623,17 @@ def true_positive_rate(
         Dataframe containing protected attributes for each instance.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
-
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+        the rest of the population. Possible values are:
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
         Possible values are:
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     Returns
     -------
@@ -601,12 +661,13 @@ def true_positive_rate(
     )
 
 
-class FalsePositiveRateScorer(_ModelFairnessScorer):
+class FalsePositiveRateScorer(_AllGroupPairsModelFairnessScorer):
     """
-    Measures the disparity of a model's false positive rate between all subgroup pairs.
+    Measures the disparity of a model's false positive rate between subgroups
+    and the rest of the population.
 
     For each subgroup, the disparity is measured by comparing the false
-    positive rate on instances of a subgroup against the rest of the subgroups.
+    positive rate on instances of a subgroup against the rest of the population.
 
     False Positive Rate [1] (also known as FPR or fall-out) is calculated as
     FP / (FP + TN), where FP and TN are the number of false positives and
@@ -615,7 +676,7 @@ class FalsePositiveRateScorer(_ModelFairnessScorer):
     Perfect score
         A perfect score for this metric means that the model does not incorrectly
         predict the positive class for any of the subgroups more often than it
-        does for the rest of the subgroups. For example, if the protected
+        does for the rest of the population. For example, if the protected
         attributes are race and sex, then a perfect false positive rate disparity
         would mean that all combinations of values for race and sex have identical
         false positive rates. Perfect values are:
@@ -631,10 +692,11 @@ class FalsePositiveRateScorer(_ModelFairnessScorer):
         values are considered as subgroups.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -642,13 +704,13 @@ class FalsePositiveRateScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     References
     ----------
     [1] `Alexandra Chouldechova. "Fair Prediction with Disparate Impact: A Study
     of Bias in Recidivism Prediction Instruments". Big Data (2016).
-    <https://www.liebertpub.com/doi/10.1089/big.2016.0047>`_
+    <https://www.liebertpub.com/doi/10.1089/big.2016.0047`_
 
     Examples
     --------
@@ -682,7 +744,8 @@ def false_positive_rate(
     reduction: Optional[str] = DEFAULT_REDUCTION,
 ):
     """
-    Measures the disparity of a model's false positive rate between all subgroup pairs.
+    Measures the disparity of a model's false positive rate between subgroups
+    and the rest of the population.
 
     For more details, refer to :class:`.FalsePositiveRateScorer`.
 
@@ -696,10 +759,11 @@ def false_positive_rate(
         Dataframe containing protected attributes for each instance.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -707,7 +771,7 @@ def false_positive_rate(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     Returns
     -------
@@ -735,12 +799,13 @@ def false_positive_rate(
     )
 
 
-class FalseNegativeRateScorer(_ModelFairnessScorer):
+class FalseNegativeRateScorer(_AllGroupPairsModelFairnessScorer):
     """
-    Measures the disparity of a model's false negative rate between all subgroup pairs.
+    Measures the disparity of a model's false negative rate between subgroups
+    and the rest of the population.
 
     For each subgroup, the disparity is measured by comparing the false
-    negative rate on instances of a subgroup against the rest of the subgroups.
+    negative rate on instances of a subgroup against the rest of the population.
 
     False Negative Rate [1] (also known as FNR or miss rate) is calculated as
     FN / (FN + TP), where FN and TP are the number of false negatives and
@@ -749,7 +814,7 @@ class FalseNegativeRateScorer(_ModelFairnessScorer):
     Perfect score
         A perfect score for this metric means that the model does not incorrectly
         predict the negative class for any of the subgroups more often than it
-        does for the rest of the subgroups. For example, if the protected
+        does for the rest of the population. For example, if the protected
         attributes are race and sex, then a perfect false negative rate disparity
         would mean that all combinations of values for race and sex have identical
         false negative rates. Perfect values are:
@@ -765,10 +830,11 @@ class FalseNegativeRateScorer(_ModelFairnessScorer):
         values are considered as subgroups.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -776,7 +842,7 @@ class FalseNegativeRateScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     References
     ----------
@@ -816,7 +882,8 @@ def false_negative_rate(
     reduction: Optional[str] = DEFAULT_REDUCTION,
 ):
     """
-    Measures the disparity of a model's false negative rate between all subgroup pairs.
+    Measures the disparity of a model's false negative rate between subgroups
+    and the rest of the population.
 
     For more details, refer to :class:`.FalseNegativeRateScorer`.
 
@@ -830,10 +897,11 @@ def false_negative_rate(
         Dataframe containing protected attributes for each instance.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -841,7 +909,7 @@ def false_negative_rate(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     Returns
     -------
@@ -869,12 +937,13 @@ def false_negative_rate(
     )
 
 
-class FalseOmissionRateScorer(_ModelFairnessScorer):
+class FalseOmissionRateScorer(_AllGroupPairsModelFairnessScorer):
     """
-    Measures the disparity of a model's false omission rate between all subgroup pairs.
+    Measures the disparity of a model's false omission rate between subgroups
+    and the rest of the population.
 
     For each subgroup, the disparity is measured by comparing the false
-    omission rate on instances of a subgroup against the rest of the subgroups.
+    omission rate on instances of a subgroup against the rest of the population.
 
     False Omission Rate (also known as FOR) is calculated as
     FN / (FN + TN), where FN and TN are the number of false negatives and
@@ -883,7 +952,7 @@ class FalseOmissionRateScorer(_ModelFairnessScorer):
     Perfect score
         A perfect score for this metric means that the model does not make more
         mistakes on the negative class for any of the subgroups more often than it
-        does for the rest of the subgroups. For example, if the protected
+        does for the rest of the population. For example, if the protected
         attributes are race and sex, then a perfect false omission rate disparity
         would mean that all combinations of values for race and sex have identical
         false omission rates. Perfect values are:
@@ -899,10 +968,11 @@ class FalseOmissionRateScorer(_ModelFairnessScorer):
         values are considered as subgroups.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -910,7 +980,7 @@ class FalseOmissionRateScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     Examples
     --------
@@ -944,7 +1014,8 @@ def false_omission_rate(
     reduction: Optional[str] = DEFAULT_REDUCTION,
 ):
     """
-    Measures the disparity of a model's false omission rate between all subgroup pairs.
+    Measures the disparity of a model's false omission rate between subgroups
+    and the rest of the population.
 
     For more details, refer to :class:`.FalseOmissionRateScorer`.
 
@@ -958,10 +1029,11 @@ def false_omission_rate(
         Dataframe containing protected attributes for each instance.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -969,7 +1041,7 @@ def false_omission_rate(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     Returns
     -------
@@ -997,13 +1069,14 @@ def false_omission_rate(
     )
 
 
-class FalseDiscoveryRateScorer(_ModelFairnessScorer):
+class FalseDiscoveryRateScorer(_AllGroupPairsModelFairnessScorer):
     """
-    Measures the disparity of a model's false discovery rate between all subgroup pairs.
+    Measures the disparity of a model's false discovery rate between subgroups
+    and the rest of the population.
 
     For each subgroup, the disparity is measured by comparing the false
     discovery rate on instances of a subgroup against the rest of the
-    subgroups.
+    population.
 
     False Discovery Rate (also known as FDR) is calculated as
     FP / (FP + TP), where FP and TP are the number of false positives and
@@ -1012,7 +1085,7 @@ class FalseDiscoveryRateScorer(_ModelFairnessScorer):
     Perfect score
         A perfect score for this metric means that the model does not make more
         mistakes on the positive class for any of the subgroups more often than it
-        does for the rest of the subgroups. For example, if the protected
+        does for the rest of the population. For example, if the protected
         attributes are race and sex, then a perfect false discovery rate disparity
         would mean that all combinations of values for race and sex have identical
         false discovery rates. Perfect values are:
@@ -1028,10 +1101,11 @@ class FalseDiscoveryRateScorer(_ModelFairnessScorer):
         values are considered as subgroups.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -1039,7 +1113,7 @@ class FalseDiscoveryRateScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     Examples
     --------
@@ -1073,7 +1147,8 @@ def false_discovery_rate(
     reduction: Optional[str] = DEFAULT_REDUCTION,
 ):
     """
-    Measures the disparity of a model's false discovery rate between all subgroup pairs.
+    Measures the disparity of a model's false discovery rate between subgroups
+    and the rest of the population.
 
     For more details, refer to :class:`.FalseDiscoveryRateScorer`.
 
@@ -1087,10 +1162,11 @@ def false_discovery_rate(
         Dataframe containing protected attributes for each instance.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -1098,7 +1174,7 @@ def false_discovery_rate(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     Returns
     -------
@@ -1126,12 +1202,13 @@ def false_discovery_rate(
     )
 
 
-class ErrorRateScorer(_ModelFairnessScorer):
+class ErrorRateScorer(_AllGroupPairsModelFairnessScorer):
     """
-    Measures the disparity of a model's error rate between all subgroup pairs.
+    Measures the disparity of a model's error rate between subgroups
+    and the rest of the population.
 
     For each subgroup, the disparity is measured by comparing the error rate on
-    instances of a subgroup against the rest of the subgroups.
+    instances of a subgroup against the rest of the population.
 
     Error Rate (also known as inaccuracy) is calculated as
     (FP + FN) / N, where FP and FN are the number of false positives and
@@ -1141,7 +1218,7 @@ class ErrorRateScorer(_ModelFairnessScorer):
     Perfect score
         A perfect score for this metric means that the model does not make more
         mistakes for any of the subgroups more often than it
-        does for the rest of the subgroups. For example, if the protected
+        does for the rest of the population. For example, if the protected
         attributes are race and sex, then a perfect error rate disparity would
         mean that all combinations of values for race and sex have identical
         error rates. Perfect values are:
@@ -1157,10 +1234,11 @@ class ErrorRateScorer(_ModelFairnessScorer):
         values are considered as subgroups.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -1168,7 +1246,7 @@ class ErrorRateScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     Examples
     --------
@@ -1202,7 +1280,8 @@ def error_rate(
     reduction: Optional[str] = DEFAULT_REDUCTION,
 ):
     """
-    Measures the disparity of a model's error rate between all subgroup pairs.
+    Measures the disparity of a model's error rate between subgroups
+    and the rest of the population.
 
     For more details, refer to :class:`.ErrorRateScorer`.
 
@@ -1216,10 +1295,11 @@ def error_rate(
         Dataframe containing protected attributes for each instance.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -1227,7 +1307,7 @@ def error_rate(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     Returns
     -------
@@ -1255,13 +1335,13 @@ def error_rate(
     )
 
 
-class EqualizedOddsScorer(_ModelFairnessScorer):
+class EqualizedOddsScorer(_AllGroupPairsModelFairnessScorer):
     """
     Measures the disparity of a model's true positive and false positive rates
-    between subgroups and the rest of the subgroups.
+    between subgroups and the rest of the population.
 
     The disparity is measured by comparing the true positive and false positive
-    rates on instances of a subgroup against the rest of the subgroups.
+    rates on instances of a subgroup against the rest of the population.
 
     True Positive Rate (also known as TPR, recall, or sensitivity) is
     calculated as TP / (TP + FN), where TP and FN are the number of true
@@ -1272,11 +1352,11 @@ class EqualizedOddsScorer(_ModelFairnessScorer):
     true negatives, respectively.
 
     Equalized Odds [1] is computed by taking the maximum distance between
-    TPR and FPR for a subgroup against the rest of the subgroups.
+    TPR and FPR for a subgroup against the rest of the population.
 
     Perfect score
         A perfect score for this metric means that the model has the same TPR and
-        FPR when comparing a subgroup to the rest of the subgroups. For example,
+        FPR when comparing a subgroup to the rest of the population. For example,
         if the protected attributes are race and sex, then a perfect
         Equalized Odds disparity would mean that all combinations of values for
         race and sex have identical TPR and FPR. Perfect values are:
@@ -1292,10 +1372,11 @@ class EqualizedOddsScorer(_ModelFairnessScorer):
         values are considered as subgroups.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -1303,7 +1384,7 @@ class EqualizedOddsScorer(_ModelFairnessScorer):
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     References
     ----------
@@ -1344,7 +1425,7 @@ def equalized_odds(
 ):
     """
     Measures the disparity of a model's true positive and false positive rates
-    between subgroups and the rest of the subgroups.
+    between subgroups and the rest of the population.
 
     For more details, refer to :class:`.EqualizedOddsScorer`.
 
@@ -1358,10 +1439,11 @@ def equalized_odds(
         Dataframe containing protected attributes for each instance.
     distance_measure : str, default='diff'
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
+        the rest of the population. Possible values are:
 
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
@@ -1369,7 +1451,7 @@ def equalized_odds(
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     Returns
     -------
@@ -1410,19 +1492,19 @@ def equalized_odds(
     return eq_odds
 
 
-class TheilIndexScorer(_ModelFairnessScorer):
+class TheilIndexScorer(_AllGroupPairsModelFairnessScorer):
     """
     Measures the disparity of a model's predictions according to groundtruth
     labels, as proposed by Speicher et al. [1].
 
     Intuitively, the Theil Index can be thought of as a measure of the
     divergence between a subgroup's different error distributions (i.e. false
-    positives and false negatives) against the rest of the subgroups.
+    positives and false negatives) against the rest of the population.
 
     Perfect score
         The perfect score for this metric is 0, meaning that the model does not
         have a different error distribution for any subgroup when compared to the
-        rest of the subgroups. For example, if the protected attributes are
+        rest of the population. For example, if the protected attributes are
         race and sex, then a perfect Theil Index disparity would mean that all
         combinations of values for race and sex have identical error
         distributions.
@@ -1435,24 +1517,25 @@ class TheilIndexScorer(_ModelFairnessScorer):
         values are considered as subgroups.
     distance_measure : str or None, default=None
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
-
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+        the rest of the population. Possible values are:
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
         Possible values are:
 
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     References
     ----------
-    [1] `Speicher, Till, et al. "A unified approach to quantifying algorithmic
-    unfairness: Measuring individual & group unfairness via inequality indices."
-    Proceedings of the 24th ACM SIGKDD international conference on knowledge
-    discovery & data mining. 2018. <https://arxiv.org/abs/1807.00787>`_
+    [1]: `Speicher, Till, et al. "A unified approach to quantifying algorithmic
+         unfairness: Measuring individual & group unfairness via inequality
+         indices." Proceedings of the 24th ACM SIGKDD international conference
+         on knowledge discovery & data mining. 2018.
+         <https://arxiv.org/abs/1807.00787>`_
 
     Examples
     --------
@@ -1501,18 +1584,17 @@ def theil_index(
         Dataframe containing protected attributes for each instance.
     distance_measure : str or None, default=None
         Determines the distance used to compare a subgroup's metric against
-        the rest of the subgroups. Possible values are:
-
-            * ``'ratio'``: Uses ``(subgroup1_val / subgroup2_val)``. Inverted to always be >= 1 if needed.
-            * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
+        the rest of the population. Possible values are:
+            * ``'ratio'``: Uses ``(subgroup_val / rest_of_pop_val)``.
+            Inverted to always be >= 1 if needed.
+            * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
         Determines how to reduce scores on all subgroups to a single output.
         Possible values are:
-
             * ``'max'``: Returns the maximal value among all subgroup metrics.
             * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
+            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
 
     Returns
     -------
@@ -1521,15 +1603,16 @@ def theil_index(
 
     Raises
     ------
-    GuardianAIValueError
+    AutoMLxValueError
         If distance_measure values are given to Theil Index.
 
     References
     ----------
     [1]: `Speicher, Till, et al. "A unified approach to quantifying algorithmic
-    unfairness: Measuring individual & group unfairness via inequality indices."
-    Proceedings of the 24th ACM SIGKDD international conference on knowledge
-    discovery & data mining. 2018. <https://arxiv.org/abs/1807.00787>`_
+         unfairness: Measuring individual & group unfairness via inequality
+         indices." Proceedings of the 24th ACM SIGKDD international conference
+         on knowledge discovery & data mining. 2018.
+         <https://arxiv.org/abs/1807.00787>`_
 
     Examples
     --------

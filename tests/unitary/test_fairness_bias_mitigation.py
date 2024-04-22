@@ -22,7 +22,7 @@ from guardian_ai.utils.exception import GuardianAITypeError, GuardianAIValueErro
 from tests.utils import get_dummy_dataset
 
 # Constants used when any metric is needed
-A_FAIRNESS_METRIC = "equalized_odds"
+A_FAIRNESS_METRIC = ["equalized_odds", "TPR"]
 AN_ACCURACY_METRIC = "accuracy"
 
 RANDOM_SEED = 12345
@@ -204,7 +204,8 @@ def test_display(responsible_model_and_metrics):
     assert True
 
 
-def test_group_ranges(sensitive_dataset_and_model):
+@pytest.mark.parametrize("a_fairness_metric", A_FAIRNESS_METRIC)
+def test_group_ranges(a_fairness_metric, sensitive_dataset_and_model):
     X, y, model, sensitive_attr_names = sensitive_dataset_and_model
 
     group_small_range = np.array([[0.4, 0.6], [0.6, 0.4]])
@@ -221,14 +222,14 @@ def test_group_ranges(sensitive_dataset_and_model):
     resp_model = ModelBiasMitigator(
         model,
         sensitive_attr_names,
-        fairness_metric=A_FAIRNESS_METRIC,
+        fairness_metric=a_fairness_metric,
         accuracy_metric=AN_ACCURACY_METRIC,
         random_seed=RANDOM_SEED,
     )
+    resp_model._unique_groups_ = unique_groups
+    resp_model._unique_group_names_ = unique_group_names
 
-    group_ranges = resp_model._get_group_ranges(
-        probas, groups, unique_groups, unique_group_names
-    )
+    group_ranges = resp_model._get_group_ranges(probas, groups, 10)
 
     small_ratio = 0.6 / (0.4 + 1e-6)
     expected_small = (1 / small_ratio, small_ratio)
@@ -241,7 +242,8 @@ def test_group_ranges(sensitive_dataset_and_model):
         assert is_close(received, expected)
 
 
-def test_accepted_inputs(sensitive_dataset_and_model):
+@pytest.mark.parametrize("a_fairness_metric", A_FAIRNESS_METRIC)
+def test_accepted_inputs(a_fairness_metric, sensitive_dataset_and_model):
     X, y, model, sensitive_attr_names = sensitive_dataset_and_model
 
     ### Bool or 'auto' attributes
@@ -249,7 +251,7 @@ def test_accepted_inputs(sensitive_dataset_and_model):
     ModelBiasMitigator(
         model,
         sensitive_attr_names,
-        fairness_metric=A_FAIRNESS_METRIC,
+        fairness_metric=a_fairness_metric,
         accuracy_metric=AN_ACCURACY_METRIC,
         higher_accuracy_is_better="auto",
         higher_fairness_is_better="auto",
@@ -263,7 +265,7 @@ def test_accepted_inputs(sensitive_dataset_and_model):
             ModelBiasMitigator(
                 model,
                 sensitive_attr_names,
-                fairness_metric=A_FAIRNESS_METRIC,
+                fairness_metric=a_fairness_metric,
                 accuracy_metric=AN_ACCURACY_METRIC,
                 **{attr_name: "any_other_str"},
             )
@@ -273,7 +275,7 @@ def test_accepted_inputs(sensitive_dataset_and_model):
             ModelBiasMitigator(
                 model,
                 sensitive_attr_names,
-                fairness_metric=A_FAIRNESS_METRIC,
+                fairness_metric=a_fairness_metric,
                 accuracy_metric=AN_ACCURACY_METRIC,
                 **{attr_name: 4},
             )
@@ -291,7 +293,7 @@ def test_accepted_inputs(sensitive_dataset_and_model):
     ModelBiasMitigator(
         model,
         sensitive_attr_names,
-        fairness_metric=A_FAIRNESS_METRIC,
+        fairness_metric=a_fairness_metric,
         accuracy_metric=AN_ACCURACY_METRIC,
         base_estimator_uses_protected_attributes=True,
     )
@@ -301,7 +303,7 @@ def test_accepted_inputs(sensitive_dataset_and_model):
         ModelBiasMitigator(
             model,
             sensitive_attr_names,
-            fairness_metric=A_FAIRNESS_METRIC,
+            fairness_metric=a_fairness_metric,
             accuracy_metric=AN_ACCURACY_METRIC,
             base_estimator_uses_protected_attributes="other_type",
         )
@@ -389,7 +391,7 @@ def test_pickle(responsible_model_and_metrics):
 
 
 def test_subsampling():
-    dataset, target = get_dummy_dataset(n_samples=500, n_features=5, n_classes=2)
+    dataset, target = get_dummy_dataset(n_samples=1000, n_features=5, n_classes=2)
     target = target.astype("bool")
     model = Pipeline(
         steps=[

@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 from itertools import product
 from collections import defaultdict
 from typing import TYPE_CHECKING, Optional
+from functools import partial
 
 from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 from guardian_ai.utils.exception import GuardianAITypeError, GuardianAIValueError
@@ -181,6 +182,9 @@ class _DifferenceDistanceMetric(_DistanceMetric):
 
         return np.abs(score)
 
+    def from_raw_scores(self, score_priv, score_unpriv):
+        return np.abs(score_priv - score_unpriv)
+
 
 class _RatioDistanceMetric(_DistanceMetric):
     display_name = "Ratio"
@@ -189,6 +193,9 @@ class _RatioDistanceMetric(_DistanceMetric):
         score_priv = metric(privileged=True)
         score_unpriv = metric(privileged=False)
 
+        return self.from_raw_scores(score_priv, score_unpriv, eps)
+
+    def from_raw_scores(self, score_priv, score_unpriv, eps=1e-6):
         num = max(score_priv, score_unpriv)
         denum = min(score_priv, score_unpriv)
 
@@ -305,15 +312,32 @@ def _get_check_inputs(
     subgroups: pd.DataFrame,
     allow_distance_measure_none: bool,
 ):
-    reduction = _get_check_reduction(reduction)
-    distance = _get_check_distance(distance_measure, allow_distance_measure_none)
+    reduction, distance = _get_check_reduction_distance_subgroups(
+        reduction,
+        distance_measure,
+        subgroups,
+        allow_distance_measure_none,
+    )
 
-    _check_subgroups(subgroups)
     attr_vals_to_idx, attr_idx_to_vals = _get_attr_idx_mappings(subgroups)
 
     subgroup_divisions = _get_subgroup_divisions(subgroups)
 
     return reduction, distance, attr_vals_to_idx, attr_idx_to_vals, subgroup_divisions
+
+
+def _get_check_reduction_distance_subgroups(
+    reduction: Optional[str],
+    distance_measure: Optional[str],
+    subgroups: pd.DataFrame,
+    allow_distance_measure_none: bool,
+):
+    reduction = _get_check_reduction(reduction)
+    distance = _get_check_distance(distance_measure, allow_distance_measure_none)
+
+    _check_subgroups(subgroups)
+
+    return reduction, distance
 
 
 def _get_score_group_from_metrics(
@@ -457,3 +481,121 @@ def _place_space_before_capital_letters(input_str):
     capital_letter_words = [word.strip() for word in capital_letter_words]
 
     return " ".join(capital_letter_words)
+
+
+def _TP(y_true, y_pred):
+    return np.sum(np.logical_and(y_pred == 1, y_true == 1))
+
+
+def _FN(y_true, y_pred):
+    return np.sum(np.logical_and(y_pred == 0, y_true == 1))
+
+
+def _FP(y_true, y_pred):
+    return np.sum(np.logical_and(y_pred == 1, y_true == 0))
+
+
+def _TN(y_true, y_pred):
+    return np.sum(np.logical_and(y_pred == 0, y_true == 0))
+
+
+def _get_rate(y_true, y_pred, rate):
+    y_pred = y_pred.astype(int)
+    if y_true is not None:
+        y_true = y_true.astype(int)
+
+    if rate == "statistical_parity":
+        # Positive prediction rate
+        return np.mean(y_pred)
+    elif rate == "error_rate":
+        # Rate of all error types
+        return np.mean(np.array(y_pred) != np.array(y_true))
+    elif rate == "TPR":
+        # Sensitivity, hit rate, recall, or true positive rate
+        TP = _TP(y_true, y_pred)
+        FN = _FN(y_true, y_pred)
+
+        return TP / (TP + FN)
+    elif rate == "TNR":
+        # Specificity or true negative rate
+        FP = _FP(y_true, y_pred)
+        TN = _TN(y_true, y_pred)
+
+        return TN / (TN + FP)
+    elif rate == "PPV":
+        # Precision or positive predictive value
+        TP = _TP(y_true, y_pred)
+        FP = _FP(y_true, y_pred)
+
+        return TP / (TP + FP)
+    elif rate == "NPV":
+        # Negative predictive value
+        FN = _FN(y_true, y_pred)
+        TN = _TN(y_true, y_pred)
+
+        return TN / (TN + FN)
+    elif rate == "FPR":
+        # Fall out or false positive rate
+        FP = _FP(y_true, y_pred)
+        TN = _TN(y_true, y_pred)
+
+        return FP / (FP + TN)
+    elif rate == "FNR":
+        # False negative rate
+        TP = _TP(y_true, y_pred)
+        FN = _FN(y_true, y_pred)
+
+        return FN / (TP + FN)
+    elif rate == "FDR":
+        # False discovery rate
+        TP = _TP(y_true, y_pred)
+        FP = _FP(y_true, y_pred)
+
+        return FP / (TP + FP)
+    elif rate == "FOR":
+        # False ommission rate
+        FN = _FN(y_true, y_pred)
+        TN = _TN(y_true, y_pred)
+
+        return FN / (FN + TN)
+    else:
+        raise GuardianAIValueError(f"Undefined rate {rate}")
+
+
+def _get_rate_scorer(fairness_metric_name):
+    return partial(_get_rate, rate=fairness_metric_name)
+
+
+_positive_fairness_names = ["TPR", "statistical_parity"]
+
+_automl_to_aif360_metric_names = {
+    "statistical_parity": "selection_rate",
+    "TPR": "true_positive_rate",
+    "FPR": "false_positive_rate",
+    "FNR": "false_negative_rate",
+    "FOR": "false_omission_rate",
+    "FDR": "false_discovery_rate",
+    "error_rate": "error_rate",
+    "theil_index": "between_group_theil_index",
+}
+
+_aif360_to_automl_metric_names = dict(
+    (v, k) for k, v in _automl_to_aif360_metric_names.items()
+)
+
+_automl_to_fairlearn_metric_names = {
+    "statistical_parity": "demographic_parity",
+    "TPR": "true_positive_rate_parity",
+    "FPR": "false_positive_rate_parity",
+    "FNR": "false_negative_rate_parity",
+}
+
+_inhouse_metrics = [
+    "statistical_parity",
+    "error_rate",
+    "TPR",
+    "FPR",
+    "FNR",
+    "FOR",
+    "FDR",
+]
