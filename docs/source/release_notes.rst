@@ -11,13 +11,11 @@ Release date: April 22, 2023
 
 **New Features and Enhancements:**
 
-* Mitigated TPR with three objectives.
+* Enhanced bias mitigation to avoid solutions that levelling down (that is, making outcomes worse for) one or more groups to achieve fairness metric rate parity.
 
-* Added bias mitigation warm starting, replace ``AIF360`` outcome regression calculations with custom code.
+* Added warm starting mechanism to bias mitigation to reduce the time required to find high-quality solution trade-offs.
 
-* Replaced ``AIF360`` rate-based fairness metrics with in-house ones.
-
-* Improved visualization for bias mitigation.
+* Replaced ``AIF360`` rate-based fairness metrics with in-house ones to improve running times.
 
 
 1.0.1
