@@ -1370,9 +1370,7 @@ class ModelBiasMitigator:
             constraint.
         """
         metric_is_valid = self.fairness_metric_name in _valid_regression_metrics
-        level_down = (
-            "<br>levelling_down: %{customdata:.4f}</br>" if metric_is_valid else ""
-        )
+        level_down = "levelling_down: %{customdata:.4f}</br>" if metric_is_valid else ""
 
         df = self._best_trials_detailed
 
@@ -1409,12 +1407,12 @@ class ModelBiasMitigator:
                 line_shape="vh" if self._higher_fairness_is_better else "hv",
                 mode="markers" if metric_is_valid else "markers+lines",
                 marker=marker,
-                hovertemplate=f"<br>{self.fairness_metric_name}"
-                + ": %{x:.4f}</br>"
+                hovertemplate=f"{self.fairness_metric_name}"
+                + ": %{x:.4f}"
                 + f"<br>{self.accuracy_metric_name}"
                 + ": %{y:.4f}</br>"
                 + level_down
-                + "<br>Index: %{text}</br>",
+                + "Index: %{text}</br>",
                 name="Multiplier Tuning (Best Models)",
             )
         )
