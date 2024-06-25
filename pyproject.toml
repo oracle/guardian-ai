@@ -38,7 +38,7 @@ dependencies = [
 
 [project.optional-dependencies]
 fairness = [
-    "aif360==0.5.0",
+    "aif360==0.6.1",
     "category-encoders==2.5.0",
     "optuna==3.2.0",
     "plotly==5.4.0",
