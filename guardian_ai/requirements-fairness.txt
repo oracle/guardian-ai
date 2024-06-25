@@ -1,4 +1,4 @@
-aif360==0.5.0
+aif360==0.6.1
 category-encoders==2.5.0
 numpy
 optuna==3.2.0
