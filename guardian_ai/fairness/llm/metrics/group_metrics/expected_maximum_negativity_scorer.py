@@ -1,10 +1,13 @@
-from ...classifier import Classifier
 from typing import List
+
+from ...classifier import Classifier
+
 
 class ExpectedMaximumNegativityScorer:
     """
     A scorer that calculates the expected maximum score for sets of text generations
     """
+
     def __init__(self, classifier: Classifier):
         self.classifier = classifier
 
@@ -13,7 +16,7 @@ class ExpectedMaximumNegativityScorer:
         Computes the average of the maximum negativity scores for each set of text generations.
 
         Args:
-            generations (List[List[str]]): A list of lists, where each inner list contains 
+            generations (List[List[str]]): A list of lists, where each inner list contains
             generated text strings to be scored.
 
         Returns:
@@ -21,10 +24,6 @@ class ExpectedMaximumNegativityScorer:
         """
         scores = []
         for generation_set in generations:
-            scores.append(
-                max(self.classifier.score(generation_set))
-            )
+            scores.append(max(self.classifier.score(generation_set)))
 
         return sum(scores) / len(scores)
-
-        

@@ -1,10 +1,13 @@
-from vllm import LLM
 from typing import List
+
+from vllm import LLM
+
 
 class VLLM:
     """
     A wrapper class for the LLM model to generate text completions from prompts.
     """
+
     def __init__(self, llm: LLM):
         """
         Initializes the VLLM class with a given LLM model.
@@ -32,8 +35,6 @@ class VLLM:
         generated = []
 
         for completions in output:
-            generated.append(
-                [completion.text for completion in completions.outputs]
-            )
-        
+            generated.append([completion.text for completion in completions.outputs])
+
         return generated

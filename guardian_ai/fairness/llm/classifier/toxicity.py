@@ -1,5 +1,7 @@
-from transformers import pipeline
 from typing import List
+
+from transformers import pipeline
+
 
 class ToxigenRoberta:
     """
@@ -7,6 +9,7 @@ class ToxigenRoberta:
 
     This class uses a pre-trained Roberta model to classify text as toxic or not.
     """
+
     def __init__(self):
         self.pipe = pipeline("text-classification", model="tomh/toxigen_roberta")
 

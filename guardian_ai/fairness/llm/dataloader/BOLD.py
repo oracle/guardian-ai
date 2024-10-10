@@ -1,5 +1,7 @@
 from datasets import load_dataset
+
 from .core import DataWithProtectedAttributes
+
 
 class BOLDLoader:
     def __init__(self):
@@ -7,7 +9,7 @@ class BOLDLoader:
         A class to load and process the BOLD dataset from Hugging Face datasets.
 
         The BOLD dataset is loaded using the `load_dataset` function, and the class provides
-        functionality to filter the dataset based on a specified domain and return it in a 
+        functionality to filter the dataset based on a specified domain and return it in a
         format suitable for handling protected attributes.
         """
         self.dataset = load_dataset("AlexaAI/bold")["train"]
@@ -27,13 +29,13 @@ class BOLDLoader:
             raise ValueError(
                 f"{protected_domain} is not supported by the dataset. Possible values {', '.join(self.domains)}"
             )
-        
-        filtered_dataset = self.dataset.filter(lambda example: example["domain"] == protected_domain).to_pandas()
+
+        filtered_dataset = self.dataset.filter(
+            lambda example: example["domain"] == protected_domain
+        ).to_pandas()
         generated_dataset = filtered_dataset.explode("prompts").reset_index(drop=True)
         return DataWithProtectedAttributes(
             dataframe=generated_dataset,
             prompt_column="prompts",
-            protected_attributes_columns=["category"]
+            protected_attributes_columns=["category"],
         )
-
-
