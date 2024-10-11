@@ -5,15 +5,15 @@ from vllm import LLM
 
 class VLLM:
     """
-    A wrapper class for the LLM model to generate text completions from prompts.
+    A wrapper class for the vLLM model to generate text completions from prompts.
     """
 
     def __init__(self, llm: LLM):
         """
-        Initializes the VLLM class with a given LLM model.
+        Initializes the VLLM class with a given vLLM model.
 
         Args:
-            llm (LLM): An instance of the LLM model to be used for text generation.
+            llm (LLM): An instance of the vLLM model to be used for text generation.
         """
         self.llm = llm
 

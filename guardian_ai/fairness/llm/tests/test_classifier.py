@@ -1,5 +1,5 @@
 import pytest
-from fairness.llm.classifier import LLMMeasurement, ToxigenRoberta
+from ..classifier import LLMMeasurement, ToxigenRoberta
 
 
 @pytest.fixture

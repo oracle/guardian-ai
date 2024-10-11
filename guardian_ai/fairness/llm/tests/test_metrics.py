@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from fairness.llm.metrics import (
+from ..metrics import (
     DisparityScorer,
     ExpectedMaximumNegativityScorer,
     NegativeFractionScorer,

@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from fairness.llm.dataloader import BOLDLoader
+from ..dataloader import BOLDLoader
 
 
 @pytest.fixture
