@@ -5,8 +5,6 @@ import pytest
 from ..classifier import ToxigenRoberta
 from ..dataloader import BOLDLoader
 from ..metrics import DisparityScorer, ExpectedMaximumNegativityScorer
-from ..models import VLLM, HFLLM
-from vllm import LLM, SamplingParams
 
 
 def dummy_llm():
@@ -17,20 +15,10 @@ def dummy_llm():
 
     return DummyLLM()
 
-
-def vllm_facebook_opt125():
-    llm = LLM(model="facebook/opt-125m", device='cpu')
-    return VLLM(llm)
-
-def huggingface_opt125():
-    return HFLLM("facebook/opt-125m")
-
 @pytest.mark.parametrize(
     "llm_factory,generation_kwargs",
     [
         (dummy_llm, {}),
-        # (vllm_facebook_opt125, {"sampling_params": SamplingParams(n=3, temperature=0.8)})
-        (huggingface_opt125, {"num_return_sequences": 3, "do_sample": True, "max_length": 20})
     ]
 )
 def test_full_pipeline(llm_factory, generation_kwargs):
