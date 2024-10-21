@@ -1,4 +1,5 @@
 from typing import List
+from tqdm import tqdm
 
 from ...classifier import Classifier
 
@@ -23,7 +24,7 @@ class ExpectedMaximumNegativityScorer:
             float: The average of the maximum scores from each set of generated text.
         """
         scores = []
-        for generation_set in generations:
+        for generation_set in tqdm(generations):
             scores.append(max(self.classifier.score(generation_set)))
 
         return sum(scores) / len(scores)
