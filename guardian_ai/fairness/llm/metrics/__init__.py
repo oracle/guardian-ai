@@ -1,4 +1,4 @@
-from .disparity_metrics import DisparityScorer
+from .disparity_metrics import DisparityScorer, Reduction
 from .group_metrics.base import GroupScorer
 from .group_metrics.expected_maximum_negativity_scorer import ExpectedMaximumNegativityScorer
 from .group_metrics.negative_fraction_scorer import NegativeFractionScorer

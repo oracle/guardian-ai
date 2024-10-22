@@ -1,6 +1,7 @@
 from typing import List
 
 from transformers import pipeline
+import torch
 
 
 class ToxigenRoberta:
@@ -11,7 +12,8 @@ class ToxigenRoberta:
     """
 
     def __init__(self):
-        self.pipe = pipeline("text-classification", model="tomh/toxigen_roberta")
+        self.pipe = pipeline("text-classification", model="tomh/toxigen_roberta",
+                             device="cuda" if torch.cuda.is_available() else "cpu")
 
     def score(self, texts: List[str]):
         """

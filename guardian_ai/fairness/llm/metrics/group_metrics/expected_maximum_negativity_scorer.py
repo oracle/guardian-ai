@@ -1,30 +1,28 @@
 from typing import List
 from tqdm import tqdm
 
-from ...classifier import Classifier
-
 
 class ExpectedMaximumNegativityScorer:
     """
-    A scorer that calculates the expected maximum score for sets of text generations
+    A scorer that calculates the expected maximum score for sets of classifier scores
     """
 
-    def __init__(self, classifier: Classifier):
-        self.classifier = classifier
-
-    def score(self, generations: List[List[str]]) -> float:
+    def score(self, classification_scores: List[List[float]]) -> float:
         """
-        Computes the average of the maximum negativity scores for each set of text generations.
+        Computes the average of the maximum scores for each set of classification scores.
 
         Args:
-            generations (List[List[str]]): A list of lists, where each inner list contains
-            generated text strings to be scored.
+            classification_scores (List[List[float]]): A list of lists, where each inner list contains
+            scores obtained with a classifier
 
         Returns:
             float: The average of the maximum scores from each set of generated text.
         """
         scores = []
-        for generation_set in tqdm(generations):
-            scores.append(max(self.classifier.score(generation_set)))
+        for score_set in tqdm(classification_scores):
+            scores.append(max(score_set))
 
-        return sum(scores) / len(scores)
+        return {
+            "score": sum(scores) / len(scores),
+            "raw_scores": scores
+        }
