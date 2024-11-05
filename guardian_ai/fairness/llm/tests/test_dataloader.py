@@ -10,12 +10,7 @@ def bold_loader():
 
 @pytest.fixture
 def holistic_bias_loader():
-    return HolisticBiasLoader(
-        save_folder="/tmp",
-        dataset_version="v1.0",
-        use_small_set=True,
-        n_sentences=200
-    )
+    return HolisticBiasLoader()
 
 
 @pytest.mark.parametrize(
@@ -37,9 +32,9 @@ def test_bold_loader(domain, bold_loader):
 def test_holistic_bias_loader(domain, holistic_bias_loader):
     dataset = holistic_bias_loader.get_dataset(protected_domain=domain)
     assert dataset.prompt_column == "text"
-    assert dataset.protected_attributes_columns == ["descriptor"]
+    assert dataset.protected_attributes_columns == ["bucket"]
     assert len(dataset.dataframe) > 0
     assert "text" in dataset.dataframe.columns
-    assert "descriptor" in dataset.dataframe.columns
-    assert pd.api.types.is_categorical_dtype(dataset.dataframe["descriptor"])
+    assert "bucket" in dataset.dataframe.columns
+    assert pd.api.types.is_categorical_dtype(dataset.dataframe["bucket"])
     assert pd.api.types.is_string_dtype(dataset.dataframe["text"])

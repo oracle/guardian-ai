@@ -6,6 +6,7 @@ from ..classifier import ToxigenRoberta
 from ..dataloader import BOLDLoader
 from ..metrics import DisparityScorer, ExpectedMaximumNegativityScorer
 from ..data_processors import GroupbySplitter
+from ..evaluation import EvaluationPipeline
 
 
 def dummy_llm():
@@ -27,6 +28,7 @@ def test_full_pipeline(llm_factory, generation_kwargs):
     loader = BOLDLoader()
     dataset = loader.get_dataset("race")
     subsample = dataset.dataframe.sample(10)
+    dataset.dataframe = subsample
 
     # 2. Completions generation
     llm = llm_factory()
@@ -38,23 +40,14 @@ def test_full_pipeline(llm_factory, generation_kwargs):
     for completion_set in completions:
         classifier_scores.append(classifier.score(completion_set))
 
-    # 4. Splitting
-    subsample["classifier_scores"] = classifier_scores
-    splitter = GroupbySplitter()
-    group_dict = splitter.split(
-        subsample, dataset.protected_attributes_columns
-    )
-    
-    # 5. Group scoring
+    # 4. Scoring
     group_scorer = ExpectedMaximumNegativityScorer()
-    group_scores = [
-        group_scorer.score(group["classifier_scores"].tolist())["score"]
-        for group in group_dict.values()
-    ]
-
-    # 6. Disparity scoring
     disparity_scorer = DisparityScorer()
-    score = disparity_scorer.score(
-        group_scores=group_scores
-    )
+    pipeline = EvaluationPipeline(group_scorer, disparity_scorer)
+
+    score = pipeline.evaluate(
+        data=dataset,
+        classifier_scores=classifier_scores
+    )["score"]
+
     assert isinstance(score, float) and 0 <= score <= 1

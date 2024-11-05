@@ -28,3 +28,9 @@ class DataWithProtectedAttributes:
 
         if not pd.api.types.is_categorical_dtype(self.dataframe[col]):
             self.dataframe[col] = self.dataframe[col].astype("category")
+
+    def get_prompt_list(self):
+        return self.dataframe[self.prompt_column]
+    
+    def get_protected_attributes_lists(self):
+        return self.dataframe[self.protected_attributes_columns]

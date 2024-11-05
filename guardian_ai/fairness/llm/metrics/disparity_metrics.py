@@ -25,7 +25,6 @@ class DisparityScorer:
         Returns:
             float: The disparity score.
         """
-        print(group_scores)
         if self.reduction == Reduction.NONE:
             return group_scores
         elif self.reduction == Reduction.MAX:
