@@ -153,7 +153,9 @@ class GradientBoostingTargetModel(TargetModel):
         super(GradientBoostingTargetModel, self).__init__()
 
     def get_model(self):
-        return GradientBoostingClassifier(n_estimators=self.n_estimators)
+        return GradientBoostingClassifier(
+            n_estimators=self.n_estimators, random_state=0
+        )
 
     def get_model_name(self):
         return "gradient_boosting_n_estimators_" + str(self.n_estimators)
@@ -165,7 +167,7 @@ class RandomForestTargetModel(TargetModel):
         super(RandomForestTargetModel, self).__init__()
 
     def get_model(self):
-        return RandomForestClassifier(n_estimators=self.n_estimators)
+        return RandomForestClassifier(n_estimators=self.n_estimators, random_state=0)
 
     def get_model_name(self):
         return "random_forest_n_estimators_" + str(self.n_estimators)
@@ -176,7 +178,7 @@ class LogisticRegressionTargetModel(TargetModel):
         super(LogisticRegressionTargetModel, self).__init__()
 
     def get_model(self):
-        return LogisticRegression(max_iter=1000)
+        return LogisticRegression(max_iter=1000, random_state=0)
 
     def get_model_name(self):
         return "logistic_regression_max_iter_1000"
@@ -187,7 +189,7 @@ class SGDTargetModel(TargetModel):
         super(SGDTargetModel, self).__init__()
 
     def get_model(self):
-        return SGDClassifier(loss="log_loss", max_iter=1000)
+        return SGDClassifier(loss="log_loss", max_iter=1000, random_state=0)
 
     def get_model_name(self):
         return "sgd_max_iter_1000"
@@ -199,7 +201,7 @@ class MLPTargetModel(TargetModel):
         super(MLPTargetModel, self).__init__()
 
     def get_model(self):
-        return MLPClassifier(hidden_layer_sizes=self.hidden_layer_sizes)
+        return MLPClassifier(hidden_layer_sizes=self.hidden_layer_sizes, random_state=0)
 
     def get_model_name(self):
         return "mlp_" + str(self.hidden_layer_sizes)
