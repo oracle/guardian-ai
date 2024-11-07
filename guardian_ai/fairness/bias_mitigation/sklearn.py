@@ -323,9 +323,9 @@ class ModelBiasMitigator:
                 adjusted_fairness_trial = self._get_outcome_rates(
                     self._y, probas, self._groups
                 )
-                self._regression_metric_trials_[
-                    trial._trial_id
-                ] = adjusted_fairness_trial
+                self._regression_metric_trials_[trial._trial_id] = (
+                    adjusted_fairness_trial
+                )
                 for (
                     group_fairness_name,
                     group_fairness_value,
@@ -351,9 +351,9 @@ class ModelBiasMitigator:
                 avg_adjusted_fairness_regression = sum(
                     adjusted_fairness_regressions
                 ) / len(adjusted_fairness_regressions)
-                self._avg_fairness_regression_[
-                    trial._trial_id
-                ] = avg_adjusted_fairness_regression
+                self._avg_fairness_regression_[trial._trial_id] = (
+                    avg_adjusted_fairness_regression
+                )
             if (
                 self.fairness_metric_name in _valid_regression_metrics
                 and self._third_objective
@@ -544,12 +544,18 @@ class ModelBiasMitigator:
             self.accuracy_metric_name = accuracy_metric
             # Always true because scores are inverted by sklearn when needed
             self._higher_accuracy_is_better = True
+
+            """Direct use of `_ProbaScorer` and `_ThresholdScorer` is deprecated after version 1.4
+            Consider checking response methods dynamically. See: https://github.com/scikit-learn/scikit-learn/pull/26840/files"""
+
             self._accuracy_metric_uses_probas = isinstance(
                 metric_object,
-                (
-                    skl_metrics._scorer._ProbaScorer,
-                    skl_metrics._scorer._ThresholdScorer,
-                ),
+                skl_metrics._scorer._Scorer,
+            ) and (
+                skl_metrics._scorer._check_response_method(
+                    self._base_estimator, metric_object._response_method
+                ).__name__
+                in ["predict_proba", "decision_function"]
             )
         elif callable(accuracy_metric):
             if self._higher_accuracy_is_better == "auto":

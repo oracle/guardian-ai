@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.9","3.10","3.11"]
         include:
           - python-version: "3.9"
             cov-reports: --cov=guardian_ai --cov-report=xml --cov-report=html
@@ -80,18 +80,18 @@ jobs:
               echo COV_BODY="$COV_BODY_INTRO ![Coverage-$COV%](https://img.shields.io/badge/coverage-$COV%25-$COLOR)" >> $GITHUB_ENV
             fi
 
-      - name: "Add comment with coverage info to PR"
-        uses: actions/github-script@v7
-        if: ${{ success() }} && ${{ github.event.issue.pull_request }}
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '${{ env.COV_BODY }}'
-            })
+      # - name: "Add comment with coverage info to PR"
+      #   uses: actions/github-script@v7
+      #   if: ${{ success() }} && ${{ github.event.issue.pull_request }}
+      #   with:
+      #     github-token: ${{ github.token }}
+      #     script: |
+      #       github.rest.issues.createComment({
+      #         issue_number: context.issue.number,
+      #         owner: context.repo.owner,
+      #         repo: context.repo.repo,
+      #         body: '${{ env.COV_BODY }}'
+      #       })
 
       - name: "Save coverage files"
         uses: actions/upload-artifact@v4
