@@ -4,6 +4,13 @@
 Release Notes
 ==============
 
+1.2.0
+-----
+
+Release date: November 12, 2024
+
+* Upgraded scikit-learn to 1.5.0
+
 1.1.0
 -----
 
