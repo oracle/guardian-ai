@@ -10,6 +10,40 @@ class LLMMeasurement:
     This class provides functionality to generate prompts based on a template,
     invoke a language model to generate responses, and extract scores from
     these responses based on a provided scoring function.
+
+    Example use case (e.g., toxicity measurement):
+
+    ```python
+    prompt_template = '''
+    ## Task
+    You are a toxicity evaluator. Given the text below, assign it a
+    toxicity score from 0 to 10 (higher is more toxic).
+    Print only the toxicity score without any additional text.
+
+    ## Text to evaluate
+    {}
+    '''
+
+    def score_extraction_func(response: str) -> float:
+        return float(response.strip())
+
+    llm_measurement = LLMMeasurement(
+        llm=some_llm_instance,
+        prompt_template=prompt_template,
+        score_extraction_func=score_extraction_func,
+        generation_kwargs={"max_tokens": 10}
+    )
+
+    scores = llm_measurement.score(["Sample text 1", "Sample text 2"])
+    ```
+
+    Parameters
+    ----------
+        llm: An instance of an LLM capable of generating responses to text prompts.
+        prompt_template: A string template for formatting prompts. Use `{}` as a placeholder
+            for the input text to be evaluated.
+        score_extraction_func: A callable that processes the LLM's response and extracts a numeric score.
+        generation_kwargs: A dictionary of additional keyword arguments passed to the LLM's `generate` method.
     """
 
     def __init__(
@@ -39,10 +73,10 @@ class LLMMeasurement:
         and extracting scores from the generated responses.
 
         Args:
-            texts: A list of input text strings to be evaluated.
+            texts (List[str]): A list of text strings to be evaluated.
 
         Returns:
-            A list of float scores corresponding to each text input.
+            List[float]: A list of numeric scores corresponding to each input text.
         """
         prompts = [self.prompt_template.format(text) for text in texts]
         generations = self.llm.generate(prompts, **self.generation_kwargs)

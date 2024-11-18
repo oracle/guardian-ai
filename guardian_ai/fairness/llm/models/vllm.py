@@ -6,24 +6,22 @@ from vllm import LLM
 class VLLM:
     """
     A wrapper class for the vLLM model to generate text completions from prompts.
+    Initializes the VLLM class with a given vLLM model.
+
+    Parameters
+    ----------
+    llm (LLM): An instance of the vLLM model to be used for text generation.
     """
 
     def __init__(self, llm: LLM):
-        """
-        Initializes the VLLM class with a given vLLM model.
-
-        Args:
-            llm (LLM): An instance of the vLLM model to be used for text generation.
-        """
         self.llm = llm
 
-    def generate(self, prompts, **kwargs) -> List[List[str]]:
+    def generate(self, prompts: List[str], **kwargs) -> List[List[str]]:
         """
         Generates text completions for the given prompts using the LLM model.
 
         Args:
             prompts: The input prompts for which text completions are to be generated.
-                     This can be a single string or a list of strings.
             **kwargs: Additional keyword arguments to be passed to the LLM's generate method.
 
         Returns:

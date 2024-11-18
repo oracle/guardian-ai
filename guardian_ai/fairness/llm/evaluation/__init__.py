@@ -1,1 +1,1 @@
-from .evaluation_pipeline import EvaluationPipeline
+from .bias_evaluator import BiasEvaluator

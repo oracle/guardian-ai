@@ -2,11 +2,18 @@ from typing import List
 
 from transformers import pipeline
 
+
 class HFLLM:
     """
     A wrapper class for a huggingsface model to generate text completions from prompts.
+
+    Parameters
+    ----------
+    model_id: str
+        HuggingFace ID of the model
     """
-    def __init__(self, model_id):
+
+    def __init__(self, model_id: str):
         self.pipe = pipeline("text-generation", model=model_id)
 
     def generate(self, prompts: List[str], **kwargs) -> List[List[str]]:
@@ -17,7 +24,6 @@ class HFLLM:
 
         Args:
             prompts: The input prompts for which text completions are to be generated.
-                     This can be a single string or a list of strings.
             **kwargs: Additional keyword arguments to be passed to the LLM's generate method.
 
         Returns:
@@ -32,15 +38,13 @@ class HFLLM:
             result = self.pipe(prompts, return_full_text=False, **kwargs)
         else:
             result = self.pipe(prompts, **kwargs)
-        
+
         if isinstance(result[0], dict):
             result = [[generation] for generation in result]
 
         outputs = [
-            [generation["generated_text"]
-            for generation in generated_set]
-            for generated_set in result     
+            [generation["generated_text"] for generation in generated_set]
+            for generated_set in result
         ]
-        
+
         return outputs
-        
