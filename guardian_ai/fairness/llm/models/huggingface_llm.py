@@ -10,7 +10,7 @@ else:
 
 class HFLLM:
     """
-    A wrapper class for a huggingsface model to generate text completions from prompts.
+    A wrapper class for a hugging face model to generate text completions from prompts.
 
     Parameters
     ----------
