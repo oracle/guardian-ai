@@ -70,8 +70,8 @@ def _dataset_metric(
         Determines how to reduce scores on all subgroups to
         a single output.
         Possible values are:
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
             * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
     allow_distance_measure_none : bool
         Whether or not to allow ``distance_measure`` to be set
@@ -145,8 +145,8 @@ class _DatasetFairnessScorer(_FairnessScorer):
     reduction : str or None
         Determines how to reduce scores on all subgroups to a single output.
         Possible values are:
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
             * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
     allow_distance_measure_none : bool
         Whether or not to allow ``distance_measure`` to be set to ``None``.
@@ -278,8 +278,8 @@ class DatasetStatisticalParityScorer(_DatasetFairnessScorer):
         Determines how to reduce scores on all subgroups to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
             * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
 
@@ -341,8 +341,8 @@ def dataset_statistical_parity(
         Determines how to reduce scores on all subgroups to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
             * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Examples

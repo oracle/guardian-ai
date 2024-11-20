@@ -1,3 +1,3 @@
 from .base import Classifier
-from .lllmmeasurement import LLMMeasurement
+from .llm_classifier import LLMClassifier
 from .toxicity import ToxigenRoberta

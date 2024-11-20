@@ -64,6 +64,6 @@ def test_full_pipeline(llm_factory, generation_kwargs):
         prompt_column=prompt_column,
         protected_attributes_columns=protected_attributes_columns,
         classifier_scores=classifier_scores,
-    )["score"]
+    )[0]
 
     assert isinstance(score, float) and 0 <= score <= 1

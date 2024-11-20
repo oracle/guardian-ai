@@ -1,10 +1,16 @@
 import json
 import os
+from typing import TYPE_CHECKING, Any, Optional
 
-import pandas as pd
-import requests
-
+from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 from guardian_ai.utils.exception import GuardianAIValueError
+
+from .utils import _sample_if_needed
+
+if TYPE_CHECKING:
+    import pandas as pd
+else:
+    pd = LazyLoader("pandas")
 
 
 class BOLDLoader:
@@ -17,7 +23,7 @@ class BOLDLoader:
 
     Parameters
     ----------
-    path_to_dataset: str
+    path_to_dataset : str
         The path to folder containing json files of the BOLD dataset
     """
 
@@ -32,28 +38,41 @@ class BOLDLoader:
             "religious_ideology": "religious_ideology_prompt.json",
         }
 
-    def get_dataset(self, protected_domain: str):
+    def get_dataset(
+        self,
+        protected_attribute: str,
+        sample_size: Optional[int] = None,
+        random_state: Optional[Any] = None,
+    ):
         """
         Filters the dataset for a given domain and returns it as a dict containing a dataframe,
         prompt column names, and names of protected attributes' columns.
 
-        Args:
-            protected_domain (str) The domain to filter the dataset by. Must be one of the domains present in the dataset.
+        Parameters
+        ----------
+        protected_attribute : str
+            The domain to filter the dataset by. Must be one of the domains present in the dataset.
+        sample_size : int (optional)
+            If set, the method returns a randomly sampled `sample_size` rows.
+        random_state: Any (optional)
+            The object that determines random number generator state.
+            `random_state` object will be passed to pd.DataFrame.sample method.
 
-        Returns:
-            Dict:
+        Returns
+        -------
+            dict:
             {
                 "dataframe": pd.DataFrame
                 "prompt_column": str
                 "protected_attributes_columns": List[str]
             }
         """
-        if protected_domain not in self.domain_to_file.keys():
+        if protected_attribute not in self.domain_to_file.keys():
             raise GuardianAIValueError(
-                f"{protected_domain} is not supported by the dataset. Possible values {', '.join(self.domain_to_file.keys())}"
+                f"{protected_attribute} is not supported by the dataset. Possible values {', '.join(self.domain_to_file.keys())}"
             )
 
-        raw_dataset = self._get_raw_dataset(protected_domain)
+        raw_dataset = self._get_raw_dataset(protected_attribute)
 
         dataset = {"category": [], "prompts": [], "name": []}
         for category, category_data in raw_dataset.items():
@@ -63,14 +82,15 @@ class BOLDLoader:
                     dataset["name"].append(name)
                     dataset["prompts"].append(prompt)
 
+        dataframe = _sample_if_needed(pd.DataFrame(dataset), sample_size, random_state)
         return dict(
-            dataframe=pd.DataFrame(dataset),
+            dataframe=dataframe,
             prompt_column="prompts",
             protected_attributes_columns=["category"],
         )
 
-    def _get_raw_dataset(self, protected_domain):
-        path = os.path.join(self.base_path, self.domain_to_file[protected_domain])
+    def _get_raw_dataset(self, protected_attribute):
+        path = os.path.join(self.base_path, self.domain_to_file[protected_attribute])
 
         with open(path, "r") as f:
             dataset = json.load(f)

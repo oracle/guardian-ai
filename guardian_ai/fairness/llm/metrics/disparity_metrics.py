@@ -1,39 +1,62 @@
-from enum import Enum
-from typing import List, Union
+from typing import TYPE_CHECKING, Any, Dict, List
 
-import pandas as pd
+from guardian_ai.fairness.metrics.utils import _get_check_reduction
+from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 
-Reduction = Enum("Reduction", ("MAX", "MEAN", "NONE"))
+if TYPE_CHECKING:
+    import pandas as pd
+else:
+    pd = LazyLoader("pandas")
 
 
 class DisparityScorer:
     """
     A class used to calculate disparity metric: a maximum difference in scores between protected groups.
+
+    Parameters
+    ----------
+    reduction : str | None (default "max")
+        The reduction function to apply to the disparities between all pairs of groups
+        to compute the final score.
+        Possible values:
+            "max": Use the maximum disparity
+            "mean": Use the mean disparity
+            None: Do not apply any reduction
     """
 
-    def __init__(self, reduction: Reduction = Reduction.MAX):
-        self.reduction = reduction
+    def __init__(self, reduction: str | None = "max"):
+        self.reduction = _get_check_reduction(reduction)
 
-    def score(self, group_scores: List[float]) -> float | List[float]:
+    def score(self, group_scores: Dict[Any, float] | pd.Series) -> float | Dict[Any, float]:
         """
-        Scores the disparity between subgroups in the dataset.
+        Computes the disparity between subgroups in the dataset.
 
-        Args:
-            group_scores (List[float]) the scores of each subgroup
-        Returns:
-            float: The disparity score.
+        Parameters
+        ----------
+        group_scores : List[float]
+            The scores of each subgroup.
+
+        Returns
+        -------
+        float or Dict[Tuple[Any, Any], float]
+            - If `reduction` is not None, returns the disparity score as a single float.
+            - If `reduction` is None, returns a dictionary of disparities between all pairs
+              of subgroups in the following format:
+              {
+                  (group1, group2): Disparity score between `group1` and `group2`
+              }
         """
-        if self.reduction == Reduction.NONE:
-            return group_scores
-        elif self.reduction == Reduction.MAX:
-            return max(group_scores) - min(group_scores)
-        elif self.reduction == Reduction.MEAN:
-            sum_diff = 0
-            for i in range(len(group_scores)):
-                for j in range(i):
-                    sum_diff += abs(group_scores[i] - group_scores[j])
-            return sum_diff / (len(group_scores) * (len(group_scores) - 1) / 2)
-        else:
-            raise NotImplementedError(
-                f"The provided reduction type `{self.reduction}` is not supported"
-            )
+
+        pairwise_differences = {}
+
+        group_names = sorted(group_scores.keys())
+        for i in range(len(group_names)):
+            for j in range(i + 1, len(group_names)):
+                group_pair = (group_names[i], group_names[j])
+                pairwise_differences[group_pair] = abs(
+                    group_scores[group_pair[1]] - group_scores[group_pair[0]]
+                )
+
+        return self.reduction(
+            list(pairwise_differences.keys()), list(pairwise_differences.values())
+        )

@@ -40,9 +40,14 @@ dependencies = [
 fairness = [
     "aif360==0.6.1",
     "category-encoders==2.5.0",
+    "numpy",
     "optuna==3.2.0",
     "plotly==5.4.0",
     "fairlearn==0.10.0",
+    "vllm==0.5.5",
+    "transformers==4.45.2",
+    "requests",
+    "torch==2.4.0",
 ]
 privacy = [
     "scipy==1.10.0",

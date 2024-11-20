@@ -6,7 +6,6 @@ from guardian_ai.fairness.llm.metrics import (
     ExpectedMaximumNegativityScorer,
     NegativeFractionScorer,
     NegativeProbabilityScorer,
-    Reduction,
 )
 
 
@@ -28,16 +27,19 @@ def test_group_scorer_score(
 ):
     group_scorer = group_scorer_cls()
     score_dict = group_scorer.score(dummy_raw_scores)
-    assert score_dict["score"] == pytest.approx(expected_scores)
-    assert score_dict["raw_scores"] == pytest.approx(expected_raw_scores)
+    assert score_dict[0] == pytest.approx(expected_scores)
+    assert score_dict[1] == pytest.approx(expected_raw_scores)
 
 
 @pytest.mark.parametrize(
     "reduction,expected_score",
-    [(Reduction.MAX, 1.0), (Reduction.MEAN, 2 / 3), (Reduction.NONE, [0.0, 0.5, 1.0])],
+    [("max", 1.0), ("mean", 2 / 3), 
+     (None, {("A", "B"): 0.5, ("B", "C"): 0.5, ("A", "C"): 1.0})],
 )
 def test_disparity_scorer(reduction, expected_score):
     disparity_scorer = DisparityScorer(reduction=reduction)
 
-    score = disparity_scorer.score(group_scores=[0.0, 0.5, 1.0])
+    score = disparity_scorer.score(group_scores={
+        "A": 0.0, "B": 0.5, "C": 1.0
+    })
     assert score == pytest.approx(expected_score)

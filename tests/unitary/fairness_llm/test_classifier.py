@@ -1,6 +1,6 @@
 import pytest
 
-from guardian_ai.fairness.llm.classifier import LLMMeasurement, ToxigenRoberta
+from guardian_ai.fairness.llm.classifier import LLMClassifier, ToxigenRoberta
 
 
 @pytest.fixture

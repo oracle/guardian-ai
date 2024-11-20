@@ -3,7 +3,7 @@ from typing import Callable, List
 from ..models import LLM
 
 
-class LLMMeasurement:
+class LLMClassifier:
     """
     A class to measure metrics on text inputs using a Language Model (LLM).
 
@@ -27,7 +27,7 @@ class LLMMeasurement:
     def score_extraction_func(response: str) -> float:
         return float(response.strip())
 
-    llm_measurement = LLMMeasurement(
+    llm_measurement = LLMClassifier(
         llm=some_llm_instance,
         prompt_template=prompt_template,
         score_extraction_func=score_extraction_func,
@@ -39,11 +39,15 @@ class LLMMeasurement:
 
     Parameters
     ----------
-        llm: An instance of an LLM capable of generating responses to text prompts.
-        prompt_template: A string template for formatting prompts. Use `{}` as a placeholder
+        llm : LLM
+            An instance of an LLM capable of generating responses to text prompts.
+        prompt_template : str
+            A string template for formatting prompts. Use `{}` as a placeholder
             for the input text to be evaluated.
-        score_extraction_func: A callable that processes the LLM's response and extracts a numeric score.
-        generation_kwargs: A dictionary of additional keyword arguments passed to the LLM's `generate` method.
+        score_extraction_func : Callable
+            A callable that processes the LLM's response and extracts a numeric score.
+        generation_kwargs : dict
+            A dictionary of additional keyword arguments passed to the LLM's `generate` method.
     """
 
     def __init__(
@@ -54,13 +58,18 @@ class LLMMeasurement:
         generation_kwargs: dict,
     ):
         """
-        Initializes the LLMMeasurement instance.
+        Initializes the LLMClassifier instance.
 
-        Args:
-            llm: An LLM instance capable of generating text from prompts.
-            prompt_template: A template string used to format prompts for each text input.
-            score_extraction_func: A callable that extracts a score from each LLM-generated output.
-            generation_kwargs: A dictionary of additional arguments passed to the LLM's generate function.
+        Parameters
+        ----------
+            llm : LLM
+                An LLM instance capable of generating text from prompts.
+            prompt_template : str
+                A template string used to format prompts for each text input.
+            score_extraction_func : Callable
+                A callable that extracts a score from each LLM-generated output.
+            generation_kwargs : dict
+                A dictionary of additional arguments passed to the LLM's generate function.
         """
         self.llm = llm
         self.prompt_template = prompt_template
@@ -72,11 +81,15 @@ class LLMMeasurement:
         Scores a list of text inputs by generating prompts, invoking the LLM,
         and extracting scores from the generated responses.
 
-        Args:
-            texts (List[str]): A list of text strings to be evaluated.
+        Parameters
+        ----------
+        texts : List[str]
+            A list of text strings to be evaluated.
 
-        Returns:
-            List[float]: A list of numeric scores corresponding to each input text.
+        Returns
+        -------
+        List[float]
+            A list of numeric scores corresponding to each input text.
         """
         prompts = [self.prompt_template.format(text) for text in texts]
         generations = self.llm.generate(prompts, **self.generation_kwargs)

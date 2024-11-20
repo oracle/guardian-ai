@@ -1,7 +1,13 @@
-from typing import List
+from typing import TYPE_CHECKING, List
 
-import torch
-from transformers import pipeline
+from guardian_ai.fairness.utils.lazy_loader import LazyLoader
+
+if TYPE_CHECKING:
+    import torch
+    from transformers import pipeline
+else:
+    torch = LazyLoader("torch")
+    pipeline = LazyLoader("transformers", "pipeline", suppress_import_warnings=True)
 
 
 class ToxigenRoberta:
@@ -22,13 +28,17 @@ class ToxigenRoberta:
         """
         Scores the given texts for toxicity.
 
-        Args:
-            texts (List[str]): A list of text strings to classify.
+        Parameters
+        ----------
+        texts : List[str]
+            A list of text strings to classify.
 
-        Returns:
-            List[float]: A list of scores indicating the probability of each text being toxic.
-                         Scores closer to 1.0 indicate higher toxicity, while scores closer to 0.0
-                         indicate non-toxicity.
+        Returns
+        -------
+        List[float]
+            A list of scores indicating the probability of each text being toxic.
+            Scores closer to 1.0 indicate higher toxicity, while scores closer to 0.0
+            indicate non-toxicity.
         """
         labels = self.pipe(texts)
         scores = []

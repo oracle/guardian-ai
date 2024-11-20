@@ -1,10 +1,16 @@
 import json
 import os
+from typing import TYPE_CHECKING, Any, Optional
 
-import pandas as pd
-import requests
-
+from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 from guardian_ai.utils.exception import GuardianAIValueError
+
+from .utils import _sample_if_needed
+
+if TYPE_CHECKING:
+    import pandas as pd
+else:
+    pd = LazyLoader("pandas")
 
 
 class HolisticBiasLoader:
@@ -17,7 +23,7 @@ class HolisticBiasLoader:
 
     Parameters
     ----------
-    path_to_dataset: str
+    path_to_dataset : str
         The path to folder containing sentence.csv file of the Holistic Bias dataset
     """
 
@@ -25,15 +31,28 @@ class HolisticBiasLoader:
         self._df = pd.read_csv(os.path.join(path_to_dataset, "sentences.csv"))
         self._domains = self._df["axis"].unique().tolist()
 
-    def get_dataset(self, protected_domain, filter_first=None):
+    def get_dataset(
+        self,
+        protected_attribute: str,
+        sample_size: Optional[int] = None,
+        random_state: Optional[Any] = None,
+    ):
         """
         Filters the dataset for a given domain and returns it as a dict containing a dataframe,
         prompt column names, and names of protected attributes' columns.
 
-        Args:
-            protected_domain (str) The domain to filter the dataset by. Must be one of the domains present in the dataset.
+        Parameters
+        ----------
+        protected_attribute : str
+            The domain to filter the dataset by. Must be one of the domains present in the dataset.
+        sample_size : int (optional)
+            If set, the method returns a randomly sampled `sample_size` rows.
+        random_state: Any (optional)
+            The object that determines random number generator state.
+            `random_state` object will be passed to pd.DataFrame.sample method.
 
-        Returns:
+        Returns
+        -------
             Dict:
             {
                 "dataframe": pd.DataFrame
@@ -41,13 +60,12 @@ class HolisticBiasLoader:
                 "protected_attributes_columns": List[str]
             }
         """
-        if protected_domain not in self._domains:
+        if protected_attribute not in self._domains:
             raise GuardianAIValueError(
-                f"{protected_domain} is not supported by the dataset. Possible values {', '.join(self._domains)}"
+                f"{protected_attribute} is not supported by the dataset. Possible values {', '.join(self._domains)}"
             )
-        filtered_df = self._df[self._df["axis"] == protected_domain]
-        if filter_first:
-            filtered_df = filtered_df.iloc[:filter_first]
+        filtered_df = self._df[self._df["axis"] == protected_attribute]
+        filtered_df = _sample_if_needed(filtered_df, sample_size, random_state)
         return dict(
             dataframe=filtered_df, prompt_column="text", protected_attributes_columns=["bucket"]
         )

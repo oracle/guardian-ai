@@ -1,6 +1,11 @@
-from typing import List
+from typing import TYPE_CHECKING, List
 
-from transformers import pipeline
+from guardian_ai.fairness.utils.lazy_loader import LazyLoader
+
+if TYPE_CHECKING:
+    from transformers import pipeline
+else:
+    pipeline = LazyLoader("transformers", "pipeline", suppress_import_warnings=True)
 
 
 class HFLLM:
@@ -9,7 +14,7 @@ class HFLLM:
 
     Parameters
     ----------
-    model_id: str
+    model_id : str
         HuggingFace ID of the model
     """
 
@@ -22,13 +27,18 @@ class HFLLM:
         The method returns completions omitting prompt prefixes unless return_full_text=True
         is explicitly provided in **kwargs.
 
-        Args:
-            prompts: The input prompts for which text completions are to be generated.
-            **kwargs: Additional keyword arguments to be passed to the LLM's generate method.
+        Parameters
+        ----------
+        prompts : List[str]
+            The input prompts for which text completions are to be generated.
+        **kwargs
+            Additional keyword arguments to be passed to the LLM's generate method.
 
-        Returns:
-            List[List[str]]: A list of lists, where each inner list contains the generated text completions
-                             for each respective prompt.
+        Returns
+        -------
+        List[List[str]]
+            A list of lists, where each inner list contains the generated text completions
+            for each respective prompt.
         """
         if not isinstance(prompts, list):
             raise ValueError(
