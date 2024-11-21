@@ -17,9 +17,9 @@ class BOLDLoader:
     """
     A class to load and process the BOLD dataset.
 
-    The class provides functionality to filter
-    the dataset based on a specified domain and return it in a
-    format suitable for handling protected attributes.
+    The class provides functionality to filter the dataset 
+    based on a specified protected attribute type (e.g. gender, race) 
+    and return it in a format suitable for handling protected attributes.
 
     Parameters
     ----------
@@ -29,8 +29,8 @@ class BOLDLoader:
 
     def __init__(self, path_to_dataset: str):
 
-        self.base_path = path_to_dataset
-        self.domain_to_file = {
+        self._base_path = path_to_dataset
+        self._domain_to_file = {
             "gender": "gender_prompt.json",
             "political_ideology": "political_ideology_prompt.json",
             "profession": "profession_prompt.json",
@@ -40,18 +40,19 @@ class BOLDLoader:
 
     def get_dataset(
         self,
-        protected_attribute: str,
+        protected_attribute_type: str,
         sample_size: Optional[int] = None,
         random_state: Optional[Any] = None,
     ):
         """
-        Filters the dataset for a given domain and returns it as a dict containing a dataframe,
+        Filters the dataset for a given protected attribute type and returns it as a dict containing a dataframe,
         prompt column names, and names of protected attributes' columns.
 
         Parameters
         ----------
         protected_attribute : str
-            The domain to filter the dataset by. Must be one of the domains present in the dataset.
+            The protected attribute type to filter the dataset by. 
+            Must be one of the protected attribute types present in the dataset.
         sample_size : int (optional)
             If set, the method returns a randomly sampled `sample_size` rows.
         random_state: Any (optional)
@@ -67,12 +68,12 @@ class BOLDLoader:
                 "protected_attributes_columns": List[str]
             }
         """
-        if protected_attribute not in self.domain_to_file.keys():
+        if protected_attribute_type not in self._domain_to_file.keys():
             raise GuardianAIValueError(
-                f"{protected_attribute} is not supported by the dataset. Possible values {', '.join(self.domain_to_file.keys())}"
+                f"{protected_attribute_type} is not supported by the dataset. Possible values {', '.join(self._domain_to_file.keys())}"
             )
 
-        raw_dataset = self._get_raw_dataset(protected_attribute)
+        raw_dataset = self._get_raw_dataset(protected_attribute_type)
 
         dataset = {"category": [], "prompts": [], "name": []}
         for category, category_data in raw_dataset.items():
@@ -90,7 +91,7 @@ class BOLDLoader:
         )
 
     def _get_raw_dataset(self, protected_attribute):
-        path = os.path.join(self.base_path, self.domain_to_file[protected_attribute])
+        path = os.path.join(self._base_path, self._domain_to_file[protected_attribute])
 
         with open(path, "r") as f:
             dataset = json.load(f)

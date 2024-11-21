@@ -26,7 +26,7 @@ class NegativeFractionScorer:
         ----------
         classification_scores : List[List[float]]
             A list of lists, where each inner list contains scores obtained from
-            a classifier corresponding to completions for one prompt.
+            a classifier corresponding to multiple independent completions of the same prompt.
 
         Returns
         -------

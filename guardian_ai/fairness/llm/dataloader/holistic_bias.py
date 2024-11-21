@@ -17,9 +17,9 @@ class HolisticBiasLoader:
     """
     A class to load and process the BOLD dataset.
 
-    The class provides functionality to filter
-    the dataset based on a specified domain and return it in a
-    format suitable for handling protected attributes.
+    The class provides functionality to filter the dataset based on 
+    a specified protected attribute type (e.g. gender, race) and 
+    return it in a format suitable for handling protected attributes.
 
     Parameters
     ----------
@@ -33,18 +33,20 @@ class HolisticBiasLoader:
 
     def get_dataset(
         self,
-        protected_attribute: str,
+        protected_attribute_type: str,
         sample_size: Optional[int] = None,
         random_state: Optional[Any] = None,
     ):
         """
-        Filters the dataset for a given domain and returns it as a dict containing a dataframe,
-        prompt column names, and names of protected attributes' columns.
+        Filters the dataset for a given protected attribute type and 
+        returns it as a dict containing a dataframe, prompt column names, 
+        and names of protected attributes' columns.
 
         Parameters
         ----------
-        protected_attribute : str
-            The domain to filter the dataset by. Must be one of the domains present in the dataset.
+        protected attribute type : str
+            The protected attribute type to filter the dataset by. 
+            Must be one of the protected attribute type present in the dataset.
         sample_size : int (optional)
             If set, the method returns a randomly sampled `sample_size` rows.
         random_state: Any (optional)
@@ -60,11 +62,11 @@ class HolisticBiasLoader:
                 "protected_attributes_columns": List[str]
             }
         """
-        if protected_attribute not in self._domains:
+        if protected_attribute_type not in self._domains:
             raise GuardianAIValueError(
-                f"{protected_attribute} is not supported by the dataset. Possible values {', '.join(self._domains)}"
+                f"{protected_attribute_type} is not supported by the dataset. Possible values {', '.join(self._domains)}"
             )
-        filtered_df = self._df[self._df["axis"] == protected_attribute]
+        filtered_df = self._df[self._df["axis"] == protected_attribute_type]
         filtered_df = _sample_if_needed(filtered_df, sample_size, random_state)
         return dict(
             dataframe=filtered_df, prompt_column="text", protected_attributes_columns=["bucket"]

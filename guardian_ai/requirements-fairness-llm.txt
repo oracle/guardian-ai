@@ -6,3 +6,7 @@ plotly==5.4.0
 pandas
 scikit-learn
 fairlearn==0.10.0
+vllm==0.5.5
+transformers==4.45.2
+torch==2.4.0
+requests

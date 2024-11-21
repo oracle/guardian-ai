@@ -85,12 +85,12 @@ def _model_metric(
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
             Only allowed if `allow_distance_measure_none` is set to True
     reduction : str or None
-        Determines how to reduce scores on all subgroups to
+        Determines how to reduce distances on all subgroup pairs to
         a single output. Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
     allow_y_true_none : bool
         Whether or not to allow `y_true` to be set to ``None``.
     allow_distance_measure_none : bool
@@ -213,12 +213,12 @@ class _AllGroupPairsModelFairnessScorer(_FairnessScorer):
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce scores on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     allow_distance_measure_none : bool, default=True
         Whether or not to allow ``distance_measure`` to be set to ``None``.
@@ -342,12 +342,12 @@ class ModelStatisticalParityScorer(_AllGroupPairsModelFairnessScorer):  # noqa: 
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce scores on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
 
     References
@@ -471,12 +471,12 @@ def model_statistical_parity(
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -566,12 +566,12 @@ class TruePositiveRateScorer(_AllGroupPairsModelFairnessScorer):
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     References
     ----------
@@ -634,12 +634,12 @@ def true_positive_rate(
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -706,12 +706,12 @@ class FalsePositiveRateScorer(_AllGroupPairsModelFairnessScorer):
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
 
     References
@@ -775,12 +775,12 @@ def false_positive_rate(
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -847,12 +847,12 @@ class FalseNegativeRateScorer(_AllGroupPairsModelFairnessScorer):
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     References
     ----------
@@ -915,12 +915,12 @@ def false_negative_rate(
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -987,12 +987,12 @@ class FalseOmissionRateScorer(_AllGroupPairsModelFairnessScorer):
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Examples
     --------
@@ -1049,13 +1049,12 @@ def false_omission_rate(
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
-
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
     Returns
     -------
     float, dict
@@ -1122,12 +1121,12 @@ class FalseDiscoveryRateScorer(_AllGroupPairsModelFairnessScorer):
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Examples
     --------
@@ -1184,12 +1183,12 @@ def false_discovery_rate(
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -1257,12 +1256,12 @@ class ErrorRateScorer(_AllGroupPairsModelFairnessScorer):
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Examples
     --------
@@ -1319,12 +1318,12 @@ def error_rate(
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -1397,12 +1396,12 @@ class EqualizedOddsScorer(_AllGroupPairsModelFairnessScorer):
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     References
     ----------
@@ -1465,12 +1464,12 @@ def equalized_odds(
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------
@@ -1544,12 +1543,12 @@ class TheilIndexScorer(_AllGroupPairsModelFairnessScorer):
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     References
     ----------
@@ -1613,11 +1612,11 @@ def theil_index(
             * ``'diff'``: Uses ``| subgroup_val - rest_of_pop_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
-            * ``'max'``: Returns the maximal value among all subgroup metrics.
-            * ``'mean'``: Returns the mean over all subgroup metrics.
-            * ``None``: Returns a ``{subgroup: subgroup_metric, ...}`` dict.
+            * ``'max'``: Returns the maximal distance among all subgroup pairs.
+            * ``'mean'``: Returns the mean over distances between all subgroup pairs.
+            * ``None``: Returns a ``{subgroup_pair: subgroup_pair_metric, ...}`` dict.
 
     Returns
     -------

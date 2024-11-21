@@ -17,7 +17,7 @@ class ExpectedMaximumNegativityScorer:
         ----------
         classification_scores : List[List[float]]
             A list of lists, where each inner list contains scores obtained with a classifier
-            corresponding to the completions of one prompt.
+            corresponding to multiple independent completions of the same prompt.
 
         Returns
         -------

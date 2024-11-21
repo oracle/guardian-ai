@@ -67,7 +67,7 @@ def _dataset_metric(
         - ``None``, to not use any distance metric. Only allowed if
             `allow_distance_measure_none` is set to True.
     reduction : str or None
-        Determines how to reduce scores on all subgroups to
+        Determines how to reduce distances on all subgroup pairs to
         a single output.
         Possible values are:
             * ``'max'``: Returns the maximal distance among all subgroup pairs.
@@ -143,7 +143,7 @@ class _DatasetFairnessScorer(_FairnessScorer):
         - ``None``, to not use any distance metric. Only allowed if
         `allow_distance_measure_none` is set to True.
     reduction : str or None
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
             * ``'max'``: Returns the maximal distance among all subgroup pairs.
             * ``'mean'``: Returns the mean over distances between all subgroup pairs.
@@ -275,7 +275,7 @@ class DatasetStatisticalParityScorer(_DatasetFairnessScorer):
             * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
 
     reduction : str or None, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
             * ``'max'``: Returns the maximal distance among all subgroup pairs.
@@ -338,7 +338,7 @@ def dataset_statistical_parity(
             * ``'diff'``: Uses ``| subgroup1_val - subgroup2_val |``.
 
     reduction : str, default='mean'
-        Determines how to reduce scores on all subgroups to a single output.
+        Determines how to reduce distances on all subgroup pairs to a single output.
         Possible values are:
 
             * ``'max'``: Returns the maximal distance among all subgroup pairs.

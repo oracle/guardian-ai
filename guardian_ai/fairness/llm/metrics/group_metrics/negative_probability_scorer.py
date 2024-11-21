@@ -26,7 +26,7 @@ class NegativeProbabilityScorer:
         ----------
         classification_scores : List[List[float]]
             A list of lists, where each inner list contains scores obtained from a classifier
-            corresponding to completions for one prompt.
+            corresponding to multiple independent completions of the same prompt.
 
         Returns
         -------
