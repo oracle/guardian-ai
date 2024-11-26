@@ -3,6 +3,7 @@ Measuring Bias in LLMs
 ****************
 
 **Load The Data**
+To measure bias in LLMs, we first need to load datasets tailored for bias evaluation. Here, we use two datasets: BOLD and Holistic Bias.
 
 .. code:: python
     import os
@@ -38,9 +39,9 @@ Measuring Bias in LLMs
 
 
 **Generating Prompt Completions**
-You can use any LLM or service to generate completions.
-The resulting array of completions should be a list of lists, 
-where each outer list contains completions (in the example below, 25) corresponding to a prompt in the dataset.
+Next, we generate completions for each prompt in the dataset. 
+Use any LLM or service to generate these completions. The result should be structured as a list of lists, 
+where each inner list contains completions for a single prompt.
 
 .. code:: python
     from transformers import pipeline
@@ -58,6 +59,8 @@ where each outer list contains completions (in the example below, 25) correspond
 
 
 **Obtaining Classification Scores**
+To evaluate bias in the generated completions, we classify the text using a pre-trained classifier. 
+Here, we use the **ToxigenRoberta** classifier to score each generated text.
 
 .. code:: python
 
@@ -68,6 +71,9 @@ where each outer list contains completions (in the example below, 25) correspond
         classifier_scores.append(classifier.score(completion_set))
 
 **Disparity Score Calculation**
+Using the generated completions and their classification scores, we can calculate disparity scores to quantify bias. 
+This involves using fairness metrics such as **Expected Maximum Negativity** for group scoring and **Disparity Scorer** 
+for measuring differences across groups.
 
 .. code:: python
     from guardian_ai.fairness.llm.dataloader import BOLDLoader
@@ -86,3 +92,11 @@ where each outer list contains completions (in the example below, 25) correspond
     )
 
     disparity_score
+
+
+**Interpreting Results**
+
+- **Disparity Score:** A numerical measure that quantifies much worse the most disadvantaged group is treated compared to the most advantegious one.
+- **Group Scores:** Individual scores for each group.
+
+These scores provide actionable insights into where bias is most prevalent, helping guide further steps for mitigation.
