@@ -457,7 +457,6 @@ def test_model_scorer_reduction(sensitive_dataset_and_model, scorer):
     X_y_scorer = X_y_scorer_fn(sensitive_attr_names, reduction=None)
     X_y_result = X_y_scorer(model, dataset, target)
     assert isinstance(X_y_result, dict)
-    assert 0
 
     subgroups_result = subgroups_scorer(target, y_pred, subgroups, reduction=None)
     assert isinstance(subgroups_result, dict)

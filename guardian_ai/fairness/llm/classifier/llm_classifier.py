@@ -55,7 +55,7 @@ class LLMClassifier:
         llm: LLM,
         prompt_template: str,
         score_extraction_func: Callable,
-        generation_kwargs: dict,
+        generation_kwargs: dict = {},
     ):
         """
         Initializes the LLMClassifier instance.
