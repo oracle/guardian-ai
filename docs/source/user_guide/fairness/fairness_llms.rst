@@ -40,7 +40,7 @@ To measure bias in LLMs, we first need to load datasets tailored for bias evalua
 
 **Generating Prompt Completions**
 Next, we generate completions for each prompt in the dataset. 
-Use any LLM or service to generate these completions. The result should be structured as a list of lists, 
+Use the LLM or service that you want to evaluate for bias to generate these completions. The result should be structured as a list of lists, 
 where each inner list contains completions for a single prompt.
 
 .. code:: python
