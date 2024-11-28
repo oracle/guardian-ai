@@ -96,7 +96,7 @@ for measuring differences across groups.
 
 **Interpreting Results**
 
-- **Disparity Score:** A numerical measure that quantifies much worse the most disadvantaged group is treated compared to the most advantegious one.
+- **Disparity Score:** A numerical measure that quantifies how much worse the most disadvantaged group is treated compared to the most advantageous one.
 - **Group Scores:** Individual scores for each group.
 
 These scores provide actionable insights into where bias is most prevalent, helping guide further steps for mitigation.
