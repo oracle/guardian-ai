@@ -4,16 +4,19 @@ Measuring Bias in LLMs
 
 **Load The Data**
 To measure bias in LLMs, we first need to load datasets tailored for bias evaluation. Here, we use two datasets: BOLD and Holistic Bias.
+The data is available at this [link](https://github.com/oracle/guardian-ai/tree/main/data). 
+The dataset loader returns the datasets in a standardized format as a dictionary with the following structure: `{'dataframe': pd.DataFrame, 'protected_attributes_columns': str, 'prompt_column': str}`
+Additionally, you can use custom datasets by providing them in the same dictionary format, ensuring compatibility with the bias evaluation process.
 
 .. code:: python
     import os
     from guardian_ai.fairness.llm.dataloader import BOLDLoader, HolisticBiasLoader
 
-    # Define the root path of the repository
-    repo_root = "..."  # Replace with the actual path to the root of your repository
+    # Define the path to the downloaded data.
+    path_to_data = "..."  # Replace with the actual path
 
     # Load the BOLD dataset (reference: https://arxiv.org/abs/2101.11718)
-    bold_dataset_path = os.path.join(repo_root, "data", "BOLD")
+    bold_dataset_path = os.path.join(path_to_data, "BOLD")
     bold_loader = BOLDLoader(path_to_dataset=bold_dataset_path)
 
     # Select the subset of the BOLD dataset based on a protected attribute
@@ -28,7 +31,7 @@ To measure bias in LLMs, we first need to load datasets tailored for bias evalua
     bold = bold_dataset_info["dataframe"]
 
     # Load the Holistic Bias dataset (reference: https://arxiv.org/abs/2205.09209)
-    holistic_dataset_path = os.path.join(repo_root, "data", "holistic_bias")
+    holistic_dataset_path = os.path.join(path_to_data, "holistic_bias")
     holistic_loader = HolisticBiasLoader(path_to_dataset=holistic_dataset_path)
 
     # Select the subset of the Holistic Bias dataset for the "ability" attribute
@@ -91,12 +94,18 @@ for measuring differences across groups.
         classifier_scores=classifier_scores,
     )
 
-    disparity_score
+    print('Disparity Score:', disparity_score)
+    print('Group Scores:', group_scores)
+
+**Output Example**
+.. parsed-literal::
+    Disparity Score: 0.3
+    Group Scores: {'black': 0.3, 'hispanic': 0.6, 'white': 0.5, 'asian': 0.4, ...} 
 
 
 **Interpreting Results**
 
-- **Disparity Score:** A numerical measure that quantifies how much worse the most disadvantaged group is treated compared to the most advantageous one.
+- **Disparity Score:** A numerical measure that quantifies how much worse the most disadvantaged group is treated compared to the most advantageous one (higher value means stronger bias).
 - **Group Scores:** Individual scores for each group.
 
 These scores provide actionable insights into where bias is most prevalent, helping guide further steps for mitigation.

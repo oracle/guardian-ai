@@ -42,10 +42,10 @@ fairness = [
     "category-encoders==2.5.0",
     "optuna==3.2.0",
     "plotly==5.4.0",
-    "fairlearn==0.10.0"
+    "fairlearn==0.10.0",
 ]
 fairness-llm = [
-    "oracle-guardian-ai[fairness, privacy]",
+    "oracle-guardian-ai[fairness]",
     "vllm==0.5.5",
     "transformers==4.45.2",
     "requests",
