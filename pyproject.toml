@@ -45,18 +45,20 @@ fairness = [
     "fairlearn==0.10.0",
 ]
 fairness-llm = [
-    "oracle-guardian-ai[fairness]",
     "vllm==0.5.5",
     "transformers==4.45.2",
     "requests",
     "torch==2.4.0",
+    "detoxify",
 ]
+
 privacy = [
     "scipy==1.10.0",
     "matplotlib==3.5.3",
 ]
+
 all-optional = [
-    "oracle-guardian-ai[fairness, privacy]",
+    "oracle-guardian-ai[fairness, privacy, fairness-llm]",
 ]
 
 [project.urls]

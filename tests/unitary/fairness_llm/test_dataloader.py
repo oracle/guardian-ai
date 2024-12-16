@@ -21,7 +21,8 @@ def holistic_bias_loader():
 
 
 @pytest.mark.parametrize(
-    "protected_attribute_type", ["race", "gender", "profession", "political_ideology", "religious_ideology"]
+    "protected_attribute_type",
+    ["race", "gender", "profession", "political_ideology", "religious_ideology"],
 )
 def test_bold_loader(protected_attribute_type, bold_loader):
     dataset_info = bold_loader.get_dataset(protected_attribute_type=protected_attribute_type)
@@ -34,9 +35,13 @@ def test_bold_loader(protected_attribute_type, bold_loader):
     assert pd.api.types.is_string_dtype(dataframe["prompts"])
 
 
-@pytest.mark.parametrize("protected_attribute_type", ["ability", "body_type", "age", "gender_and_sex"])
+@pytest.mark.parametrize(
+    "protected_attribute_type", ["ability", "body_type", "age", "gender_and_sex"]
+)
 def test_holistic_bias_loader(protected_attribute_type, holistic_bias_loader):
-    dataset_info = holistic_bias_loader.get_dataset(protected_attribute_type=protected_attribute_type)
+    dataset_info = holistic_bias_loader.get_dataset(
+        protected_attribute_type=protected_attribute_type
+    )
     dataframe = dataset_info["dataframe"]
     prompt_column = dataset_info["prompt_column"]
     protected_attributes_columns = dataset_info["protected_attributes_columns"]

@@ -4,24 +4,23 @@
 # Copyright (c) 2023, 2024 Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
+import pandas as pd
+import pytest
+
 import guardian_ai.privacy_estimation.attack
+from guardian_ai.privacy_estimation.attack import AttackType
+from guardian_ai.privacy_estimation.attack_runner import AttackRunner
 from guardian_ai.privacy_estimation.dataset import (
+    AttackModelData,
     ClassificationDataset,
     DataSplit,
     TargetModelData,
-    AttackModelData,
 )
-from guardian_ai.privacy_estimation.attack import AttackType
-from guardian_ai.privacy_estimation.attack_runner import AttackRunner
 from guardian_ai.privacy_estimation.model import (
-    RandomForestTargetModel,
     LogisticRegressionTargetModel,
     MLPTargetModel,
+    RandomForestTargetModel,
 )
-import pytest
-import pandas as pd
-
-
 from tests.utils import get_dummy_dataset
 
 

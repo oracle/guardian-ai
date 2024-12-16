@@ -11,10 +11,10 @@ import tempfile
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import balanced_accuracy_score, log_loss, roc_auc_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.linear_model import LogisticRegression
 
 from guardian_ai.fairness.bias_mitigation import ModelBiasMitigator
 from guardian_ai.fairness.metrics import model_statistical_parity
@@ -53,9 +53,7 @@ def create_concat_sensitive_attrs(dataset, n_classes):
     sensitive_dataset = dataset.copy()
     sensitive_attrs_names = []
     for i, n_classes_i in enumerate(n_classes):
-        sensitive_vals = np.array(
-            [f"sensitive_val_{idx}" for idx in range(n_classes_i)]
-        )
+        sensitive_vals = np.array([f"sensitive_val_{idx}" for idx in range(n_classes_i)])
         attr_name = f"sensitive_attr_{i}"
         sensitive_dataset = concat_sensitive_attr_column(
             sensitive_vals, sensitive_dataset, attr_name
@@ -97,9 +95,7 @@ SENSITIVE_FEATURES_VARIATIONS = {
 )
 def sensitive_dataset_and_model(model_type, base_dataset, request):
     dataset, target = base_dataset
-    dataset, sensitive_attr_names = create_concat_sensitive_attrs(
-        dataset, **request.param
-    )
+    dataset, sensitive_attr_names = create_concat_sensitive_attrs(dataset, **request.param)
     model = Pipeline(
         steps=[
             ("preprocessor", OneHotEncoder(handle_unknown="ignore")),
@@ -339,9 +335,7 @@ def test_select_model(responsible_model_and_metrics):
     with pytest.raises(GuardianAIValueError):
         resp_model.select_model(len(resp_model._best_trials_detailed))
 
-    for idx in range(
-        min(len(resp_model._best_trials_detailed), 3)
-    ):  # test at max 2 other idxs
+    for idx in range(min(len(resp_model._best_trials_detailed), 3)):  # test at max 2 other idxs
         row = resp_model._best_trials_detailed.iloc[idx]
         expected_fairness_score = row[fairness_name]
         expected_accuracy_score = row[accuracy_name]
@@ -382,9 +376,7 @@ def test_pickle(responsible_model_and_metrics):
             unpickled_resp_model = pickle.load(f)
 
         # Assert that reloaded model predicts same thing as saved model
-        assert (
-            resp_model.predict_proba(X) == unpickled_resp_model.predict_proba(X)
-        ).all()
+        assert (resp_model.predict_proba(X) == unpickled_resp_model.predict_proba(X)).all()
     finally:
         if os.path.isfile(fname):
             os.remove(fname)

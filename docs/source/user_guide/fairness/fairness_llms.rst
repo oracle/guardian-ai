@@ -63,12 +63,12 @@ where each inner list contains completions for a single prompt.
 
 **Obtaining Classification Scores**
 To evaluate bias in the generated completions, we classify the text using a pre-trained classifier. 
-Here, we use the **ToxigenRoberta** classifier to score each generated text.
+Here, we use the **Detoxify** classifier to score each generated text.
 
 .. code:: python
 
-    from guardian_ai.fairness.llm.classifier import ToxigenRoberta
-    classifier = ToxigenRoberta()
+    from guardian_ai.fairness.llm.classifier import DetoxifyClassifier
+    classifier = DetoxifyClassifier()
     classifier_scores = []
     for completion_set in completions:
         classifier_scores.append(classifier.score(completion_set))

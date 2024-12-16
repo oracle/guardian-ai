@@ -17,8 +17,8 @@ class HolisticBiasLoader:
     """
     A class to load and process the BOLD dataset.
 
-    The class provides functionality to filter the dataset based on 
-    a specified protected attribute type (e.g. gender, race) and 
+    The class provides functionality to filter the dataset based on
+    a specified protected attribute type (e.g. gender, race) and
     return it in a format suitable for handling protected attributes.
 
     Parameters
@@ -38,14 +38,14 @@ class HolisticBiasLoader:
         random_state: Optional[Any] = None,
     ):
         """
-        Filters the dataset for a given protected attribute type and 
-        returns it as a dict containing a dataframe, prompt column names, 
+        Filters the dataset for a given protected attribute type and
+        returns it as a dict containing a dataframe, prompt column names,
         and names of protected attributes' columns.
 
         Parameters
         ----------
         protected attribute type : str
-            The protected attribute type to filter the dataset by. 
+            The protected attribute type to filter the dataset by.
             Must be one of the protected attribute type present in the dataset.
         sample_size : int (optional)
             If set, the method returns a randomly sampled `sample_size` rows.

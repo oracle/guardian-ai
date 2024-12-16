@@ -17,8 +17,8 @@ class BOLDLoader:
     """
     A class to load and process the BOLD dataset.
 
-    The class provides functionality to filter the dataset 
-    based on a specified protected attribute type (e.g. gender, race) 
+    The class provides functionality to filter the dataset
+    based on a specified protected attribute type (e.g. gender, race)
     and return it in a format suitable for handling protected attributes.
 
     Parameters
@@ -51,7 +51,7 @@ class BOLDLoader:
         Parameters
         ----------
         protected_attribute : str
-            The protected attribute type to filter the dataset by. 
+            The protected attribute type to filter the dataset by.
             Must be one of the protected attribute types present in the dataset.
         sample_size : int (optional)
             If set, the method returns a randomly sampled `sample_size` rows.

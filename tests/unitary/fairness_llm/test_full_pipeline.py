@@ -4,7 +4,7 @@ import random
 import pandas as pd
 import pytest
 
-from guardian_ai.fairness.llm.classifier import ToxigenRoberta
+from guardian_ai.fairness.llm.classifier import DetoxifyClassifier
 from guardian_ai.fairness.llm.dataloader import BOLDLoader
 from guardian_ai.fairness.llm.evaluation import BiasEvaluator
 from guardian_ai.fairness.llm.metrics import DisparityScorer, ExpectedMaximumNegativityScorer
@@ -49,7 +49,7 @@ def test_full_pipeline(llm_factory, generation_kwargs):
     completions = llm.generate(subsample[prompt_column].tolist(), **generation_kwargs)
 
     # 3. Classifier scoring
-    classifier = ToxigenRoberta()
+    classifier = DetoxifyClassifier()
     classifier_scores = []
     for completion_set in completions:
         classifier_scores.append(classifier.score(completion_set))

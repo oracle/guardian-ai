@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable, List, Optional, Union
 
-from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 from guardian_ai.fairness.metrics.utils import (
     DEFAULT_DISTANCE,
     DEFAULT_REDUCTION,
@@ -24,6 +23,7 @@ from guardian_ai.fairness.metrics.utils import (
     _place_space_before_capital_letters,
     _y_to_aifm_ds,
 )
+from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 from guardian_ai.utils.exception import GuardianAIValueError
 
 if TYPE_CHECKING:
@@ -90,9 +90,7 @@ def _dataset_metric(
         attr_vals_to_idx,
         attr_idx_to_vals,
         subgroup_divisions,
-    ) = _get_check_inputs(
-        reduction, distance_measure, subgroups, allow_distance_measure_none
-    )
+    ) = _get_check_inputs(reduction, distance_measure, subgroups, allow_distance_measure_none)
 
     ds_true = _y_to_aifm_ds(y_true, subgroups, attr_vals_to_idx)
 
@@ -162,9 +160,7 @@ class _DatasetFairnessScorer(_FairnessScorer):
     ):
         super().__init__(protected_attributes, metric)
 
-        self.distance_measure = _get_check_distance(
-            distance_measure, allow_distance_measure_none
-        )
+        self.distance_measure = _get_check_distance(distance_measure, allow_distance_measure_none)
         self.reduction = _get_check_reduction(reduction)
 
     def __call__(

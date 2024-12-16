@@ -9,9 +9,10 @@ import numpy as np
 import pandas as pd
 import pytest
 import sklearn
-from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
+
 from guardian_ai.fairness.metrics.dataset import (
     ConsistencyScorer,
     DatasetStatisticalParityScorer,
@@ -123,9 +124,7 @@ def create_concat_sensitive_attrs(dataset, n_classes):
     sensitive_dataset = dataset.copy()
     sensitive_attrs_names = []
     for i, n_classes_i in enumerate(n_classes):
-        sensitive_vals = np.array(
-            [f"sensitive_val_{idx}" for idx in range(n_classes_i)]
-        )
+        sensitive_vals = np.array([f"sensitive_val_{idx}" for idx in range(n_classes_i)])
         attr_name = f"sensitive_attr_{i}"
         sensitive_dataset = concat_sensitive_attr_column(
             sensitive_vals, sensitive_dataset, attr_name
@@ -158,9 +157,7 @@ def base_dataset():
 )
 def sensitive_dataset_and_model(model_type, base_dataset, request):
     dataset, target = base_dataset
-    dataset, sensitive_attr_names = create_concat_sensitive_attrs(
-        dataset, **request.param
-    )
+    dataset, sensitive_attr_names = create_concat_sensitive_attrs(dataset, **request.param)
     model = Pipeline(
         steps=[
             ("preprocessor", OneHotEncoder(handle_unknown="ignore")),
@@ -205,9 +202,7 @@ def test_dataset_scorers_equivalence(sensitive_dataset_and_model, scorer):
     subgroups = dataset[sensitive_attr_names]
 
     # Validate same value
-    assert is_close(
-        subgroup_scorer(target, subgroups), X_y_scorer(X=dataset, y_true=target)
-    )
+    assert is_close(subgroup_scorer(target, subgroups), X_y_scorer(X=dataset, y_true=target))
 
 
 @pytest.mark.parametrize("scorer", MODEL_X_Y_SCORERS.keys())
@@ -228,9 +223,7 @@ class ModelIgnoreOtherFeatures(sklearn.base.BaseEstimator):
         self.features_to_keep = features_to_keep
 
     def _trim_X(self, X):
-        features_to_drop = [
-            col for col in X.columns if col not in self.features_to_keep
-        ]
+        features_to_drop = [col for col in X.columns if col not in self.features_to_keep]
         return X.drop(columns=features_to_drop)
 
     def predict(self, X):
@@ -244,9 +237,7 @@ class ModelIgnoreOtherFeatures(sklearn.base.BaseEstimator):
 def test_X_y_scorer_supp_features(base_dataset, model_type, scorer):
     # Need to create our own dataset and model to test variations of supp_features
     dataset_no_sf, target = base_dataset
-    dataset, sensitive_attr_names = create_concat_sensitive_attrs(
-        dataset_no_sf, n_classes=(3, 4)
-    )
+    dataset, sensitive_attr_names = create_concat_sensitive_attrs(dataset_no_sf, n_classes=(3, 4))
 
     if scorer in MODEL_X_Y_SCORERS:
         scorer = MODEL_X_Y_SCORERS[scorer](sensitive_attr_names)
@@ -315,9 +306,7 @@ def test_model_scorers_equivalence(sensitive_dataset_and_model, scorer):
     y_pred = model.predict(dataset)
 
     # Validate same value
-    assert is_close(
-        subgroup_scorer(target, y_pred, subgroups), X_y_scorer(model, dataset, target)
-    )
+    assert is_close(subgroup_scorer(target, y_pred, subgroups), X_y_scorer(model, dataset, target))
 
 
 @pytest.mark.parametrize("scorer", ALL_X_Y_SCORERS.keys())
@@ -334,9 +323,7 @@ def test_X_y_scorer_sensitive_attr_formats(base_dataset, scorer):
 
     # Accept str vals
     vals = [f"val_{i}" for i in range(5)]
-    sensitive_dataset = concat_sensitive_attr_column(
-        vals, dataset, sensitive_attrs_name
-    )
+    sensitive_dataset = concat_sensitive_attr_column(vals, dataset, sensitive_attrs_name)
     assert isinstance(scorer(model, sensitive_dataset, target), float)
 
     # Accept categorical vals
@@ -350,24 +337,18 @@ def test_X_y_scorer_sensitive_attr_formats(base_dataset, scorer):
 
     # Accept bool vals
     vals = [True, False]
-    sensitive_dataset = concat_sensitive_attr_column(
-        vals, dataset, sensitive_attrs_name
-    )
+    sensitive_dataset = concat_sensitive_attr_column(vals, dataset, sensitive_attrs_name)
     assert isinstance(scorer(model, sensitive_dataset, target), float)
 
     # Reject (non-categoricalized) integer vals
     vals = list(range(5))
-    sensitive_dataset = concat_sensitive_attr_column(
-        vals, dataset, sensitive_attrs_name
-    )
+    sensitive_dataset = concat_sensitive_attr_column(vals, dataset, sensitive_attrs_name)
     with pytest.raises(GuardianAIValueError):
         scorer(model, sensitive_dataset, target)
 
     # Reject float vals
     vals = np.random.rand(5)
-    sensitive_dataset = concat_sensitive_attr_column(
-        vals, dataset, sensitive_attrs_name
-    )
+    sensitive_dataset = concat_sensitive_attr_column(vals, dataset, sensitive_attrs_name)
     with pytest.raises(GuardianAIValueError):
         scorer(model, sensitive_dataset, target)
 
@@ -434,9 +415,7 @@ def test_model_scorer_reduction(sensitive_dataset_and_model, scorer):
     # Mean reduction
     X_y_scorer = X_y_scorer_fn(sensitive_attr_names, reduction="mean")
     assert isinstance(X_y_scorer(model, dataset, target), float)
-    assert isinstance(
-        subgroups_scorer(target, y_pred, subgroups, reduction="mean"), float
-    )
+    assert isinstance(subgroups_scorer(target, y_pred, subgroups, reduction="mean"), float)
     assert is_close(
         X_y_scorer(model, dataset, target),
         subgroups_scorer(target, y_pred, subgroups, reduction="mean"),
@@ -445,9 +424,7 @@ def test_model_scorer_reduction(sensitive_dataset_and_model, scorer):
     # Max reduction
     X_y_scorer = X_y_scorer_fn(sensitive_attr_names, reduction="max")
     assert isinstance(X_y_scorer(model, dataset, target), float)
-    assert isinstance(
-        subgroups_scorer(target, y_pred, subgroups, reduction="max"), float
-    )
+    assert isinstance(subgroups_scorer(target, y_pred, subgroups, reduction="max"), float)
     assert is_close(
         X_y_scorer(model, dataset, target),
         subgroups_scorer(target, y_pred, subgroups, reduction="max"),
@@ -543,9 +520,7 @@ def test_model_scorer_distance(sensitive_dataset_and_model, scorer):
 
         # Do not accept other distances
         with pytest.raises(GuardianAIValueError):
-            X_y_scorer = X_y_scorer_fn(
-                sensitive_attr_names, distance_measure="something"
-            )
+            X_y_scorer = X_y_scorer_fn(sensitive_attr_names, distance_measure="something")
 
         with pytest.raises(GuardianAIValueError):
             subgroup_scorer(target, y_pred, subgroups, distance_measure="something")
@@ -560,14 +535,10 @@ def test_model_scorer_distance(sensitive_dataset_and_model, scorer):
         # Accepts only None as distance_measure
         X_y_scorer = X_y_scorer_fn(sensitive_attr_names, distance_measure=None)
         assert isinstance(X_y_scorer(model, dataset, target), float)
-        assert isinstance(
-            subgroup_scorer(target, y_pred, subgroups, distance_measure=None), float
-        )
+        assert isinstance(subgroup_scorer(target, y_pred, subgroups, distance_measure=None), float)
 
         with pytest.raises(GuardianAIValueError):
-            X_y_scorer = X_y_scorer_fn(
-                sensitive_attr_names, distance_measure="something"
-            )
+            X_y_scorer = X_y_scorer_fn(sensitive_attr_names, distance_measure="something")
 
         with pytest.raises(GuardianAIValueError):
             subgroup_scorer(target, y_pred, subgroups, distance_measure="something")
@@ -583,9 +554,7 @@ def test_dataset_scorer_distance(sensitive_dataset_and_model, scorer):
     # Validate for ratio distance
     X_y_scorer = X_y_scorer_fn(sensitive_attr_names, distance_measure="ratio")
     assert isinstance(X_y_scorer(None, dataset, target), float)
-    assert isinstance(
-        subgroup_scorer(target, subgroups, distance_measure="ratio"), float
-    )
+    assert isinstance(subgroup_scorer(target, subgroups, distance_measure="ratio"), float)
     assert is_close(
         X_y_scorer(None, dataset, target),
         subgroup_scorer(target, subgroups, distance_measure="ratio"),
@@ -594,9 +563,7 @@ def test_dataset_scorer_distance(sensitive_dataset_and_model, scorer):
     # Validate for diff distance
     X_y_scorer = X_y_scorer_fn(sensitive_attr_names, distance_measure="diff")
     assert isinstance(X_y_scorer(None, dataset, target), float)
-    assert isinstance(
-        subgroup_scorer(target, subgroups, distance_measure="diff"), float
-    )
+    assert isinstance(subgroup_scorer(target, subgroups, distance_measure="diff"), float)
     assert is_close(
         X_y_scorer(None, dataset, target),
         subgroup_scorer(target, subgroups, distance_measure="diff"),
@@ -706,9 +673,7 @@ model_scorers_two_classes_calibration_exps = {
         (("distance_measure", "ratio"), ("reduction", "mean")): 1.0,
     },
     "false_omission_rate_scorer": {  # male=0.67, female=1.0
-        (("distance_measure", "diff"), ("reduction", None)): {
-            ("female", "male"): 1 / 3
-        },
+        (("distance_measure", "diff"), ("reduction", None)): {("female", "male"): 1 / 3},
         (("distance_measure", "diff"), ("reduction", "max")): 1 / 3,
         (("distance_measure", "diff"), ("reduction", "mean")): 1 / 3,
         (("distance_measure", "ratio"), ("reduction", None)): {("female", "male"): 1.5},
@@ -716,9 +681,7 @@ model_scorers_two_classes_calibration_exps = {
         (("distance_measure", "ratio"), ("reduction", "mean")): 1.5,
     },
     "false_discovery_rate_scorer": {  # male=0.33, female=0.67
-        (("distance_measure", "diff"), ("reduction", None)): {
-            ("female", "male"): 1 / 3
-        },
+        (("distance_measure", "diff"), ("reduction", None)): {("female", "male"): 1 / 3},
         (("distance_measure", "diff"), ("reduction", "max")): 1 / 3,
         (("distance_measure", "diff"), ("reduction", "mean")): 1 / 3,
         (("distance_measure", "ratio"), ("reduction", None)): {("female", "male"): 2.0},
@@ -754,14 +717,10 @@ def test_calibration_model_scorers_two_classes(calibration_dataset_two_classes, 
 
 dataset_scorers_two_classes_calibration_exps = {
     "dataset_statistical_parity_scorer": {  # male=0.66, female=0.5
-        (("distance_measure", "diff"), ("reduction", None)): {
-            ("female", "male"): 1 / 6
-        },
+        (("distance_measure", "diff"), ("reduction", None)): {("female", "male"): 1 / 6},
         (("distance_measure", "diff"), ("reduction", "max")): 1 / 6,
         (("distance_measure", "diff"), ("reduction", "mean")): 1 / 6,
-        (("distance_measure", "ratio"), ("reduction", None)): {
-            ("female", "male"): 4 / 3
-        },
+        (("distance_measure", "ratio"), ("reduction", None)): {("female", "male"): 4 / 3},
         (("distance_measure", "ratio"), ("reduction", "max")): 4 / 3,
         (("distance_measure", "ratio"), ("reduction", "mean")): 4 / 3,
     },
@@ -771,9 +730,7 @@ dataset_scorers_two_classes_calibration_exps = {
 
 
 @pytest.mark.parametrize("scorer", dataset_scorers_two_classes_calibration_exps.keys())
-def test_calibration_dataset_scorers_two_classes(
-    calibration_dataset_two_classes, scorer
-):
+def test_calibration_dataset_scorers_two_classes(calibration_dataset_two_classes, scorer):
     dataset, target, y_pred = calibration_dataset_two_classes
     calibration_exps = dataset_scorers_two_classes_calibration_exps[scorer]
     scorer = DATASET_SUBGROUPS_SCORERS[scorer]
@@ -807,20 +764,14 @@ def test_scorers_have_display_name(scorer):
 
 def test_scorers_correct_display_name():
     # Single prot attr w/ reduction and distance measure
-    scorer = ModelStatisticalParityScorer(
-        "race", distance_measure="diff", reduction="mean"
-    )
+    scorer = ModelStatisticalParityScorer("race", distance_measure="diff", reduction="mean")
 
     assert scorer.display_name == "Mean Statistical Parity Difference for 'race'"
 
     # Two prot attrs w/ other reduction and distance measure
-    scorer = TruePositiveRateScorer(
-        ["race", "sex"], distance_measure="ratio", reduction="max"
-    )
+    scorer = TruePositiveRateScorer(["race", "sex"], distance_measure="ratio", reduction="max")
 
-    assert (
-        scorer.display_name == "Maximum True Positive Rate Ratio for 'race' and 'sex'"
-    )
+    assert scorer.display_name == "Maximum True Positive Rate Ratio for 'race' and 'sex'"
 
     # Metric w/o reduction or distance measure and 3 prot attrs
     scorer = TheilIndexScorer(["race", "sex", "age"], reduction=None)

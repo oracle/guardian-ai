@@ -33,13 +33,10 @@ def test_group_scorer_score(
 
 @pytest.mark.parametrize(
     "reduction,expected_score",
-    [("max", 1.0), ("mean", 2 / 3), 
-     (None, {("A", "B"): 0.5, ("B", "C"): 0.5, ("A", "C"): 1.0})],
+    [("max", 1.0), ("mean", 2 / 3), (None, {("A", "B"): 0.5, ("B", "C"): 0.5, ("A", "C"): 1.0})],
 )
 def test_disparity_scorer(reduction, expected_score):
     disparity_scorer = DisparityScorer(reduction=reduction)
 
-    score = disparity_scorer.score(group_scores={
-        "A": 0.0, "B": 0.5, "C": 1.0
-    })
+    score = disparity_scorer.score(group_scores={"A": 0.0, "B": 0.5, "C": 1.0})
     assert score == pytest.approx(expected_score)

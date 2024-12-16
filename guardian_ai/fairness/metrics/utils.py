@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
-from itertools import product
 from collections import defaultdict
-from typing import TYPE_CHECKING, Optional
 from functools import partial
+from itertools import product
+from typing import TYPE_CHECKING, Optional
 
 from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 from guardian_ai.utils.exception import GuardianAITypeError, GuardianAIValueError
@@ -232,8 +232,7 @@ def _get_check_distance(distance_measure, allow_distance_measure_none):
             return _VanillaDistanceMetric()
         else:
             raise GuardianAIValueError(
-                "None is not supported as a distance measure for the "
-                "chosen fairness metric."
+                "None is not supported as a distance measure for the " "chosen fairness metric."
             )
     else:
         if distance_measure in distance_mappings:
@@ -256,7 +255,9 @@ def _check_subgroups(subgroups):
     ]
 
     if len(non_categorical_attributes) > 0:
-        error_msg = "Provided protected attributes should be of type 'category', 'bool', or 'object'."
+        error_msg = (
+            "Provided protected attributes should be of type 'category', 'bool', or 'object'."
+        )
 
         if len(non_categorical_attributes) <= 10:
             error_msg += (
@@ -293,15 +294,8 @@ def _get_subgroup_divisions(subgroups):
     ]
 
     subgroups = product(*all_attr_vals_tuples)
-    subgroups = [
-        {attr: attr_val for (attr, attr_val) in subgroup} for subgroup in subgroups
-    ]
-    divisions = [
-        ([subgroup], [sg])
-        for subgroup in subgroups
-        for sg in subgroups
-        if sg != subgroup
-    ]
+    subgroups = [{attr: attr_val for (attr, attr_val) in subgroup} for subgroup in subgroups]
+    divisions = [([subgroup], [sg]) for subgroup in subgroups for sg in subgroups if sg != subgroup]
 
     return divisions
 
@@ -348,9 +342,7 @@ def _get_score_group_from_metrics(
 
     group_repr = tuple()
     for group in [unpriv_group, priv_group]:
-        cur_group_repr = tuple(
-            attr_idx_to_vals[attr][idx] for attr, idx in group[0].items()
-        )
+        cur_group_repr = tuple(attr_idx_to_vals[attr][idx] for attr, idx in group[0].items())
         if len(cur_group_repr) == 1:
             cur_group_repr = cur_group_repr[0]
         group_repr += (cur_group_repr,)
@@ -369,9 +361,7 @@ def _y_to_aifm_ds(y, subgroups, attr_vals_to_idx):
 
     # AIF360 requires all columns to be numerical
     for col, vals_to_idx in attr_vals_to_idx.items():
-        df[col].replace(
-            list(vals_to_idx.keys()), list(vals_to_idx.values()), inplace=True
-        )
+        df[col].replace(list(vals_to_idx.keys()), list(vals_to_idx.values()), inplace=True)
 
     df["y"] = y.to_numpy()
     ds = BinaryLabelDataset(
@@ -397,9 +387,7 @@ class _FairnessScorer(ABC):
                 f"{type(supplementary_features)} instead."
             )
 
-        duplicate_features = set(X.columns).intersection(
-            set(supplementary_features.columns)
-        )
+        duplicate_features = set(X.columns).intersection(set(supplementary_features.columns))
         if len(duplicate_features) > 0:
             raise GuardianAIValueError(
                 "The following feature were found in both ``X`` and"
@@ -411,22 +399,18 @@ class _FairnessScorer(ABC):
         missing_features = set(self.protected_attributes) - set(features_avail)
 
         if len(missing_features) > 0:
-            error_msg = f"The following protected attributes were not found in X: {missing_features}."
+            error_msg = (
+                f"The following protected attributes were not found in X: {missing_features}."
+            )
 
             if len(features_avail) <= 10:
                 error_msg += f" Available features are: {features_avail}."
 
             raise GuardianAIValueError(error_msg)
 
-        subgroups_x = X[
-            [attr for attr in self.protected_attributes if attr in X.columns]
-        ]
+        subgroups_x = X[[attr for attr in self.protected_attributes if attr in X.columns]]
         subgroups_sf = supplementary_features[
-            [
-                attr
-                for attr in self.protected_attributes
-                if attr in supplementary_features.columns
-            ]
+            [attr for attr in self.protected_attributes if attr in supplementary_features.columns]
         ]
         subgroups = pd.concat([subgroups_x, subgroups_sf], axis=1)
 
@@ -579,9 +563,7 @@ _automl_to_aif360_metric_names = {
     "theil_index": "between_group_theil_index",
 }
 
-_aif360_to_automl_metric_names = dict(
-    (v, k) for k, v in _automl_to_aif360_metric_names.items()
-)
+_aif360_to_automl_metric_names = dict((v, k) for k, v in _automl_to_aif360_metric_names.items())
 
 _automl_to_fairlearn_metric_names = {
     "statistical_parity": "demographic_parity",

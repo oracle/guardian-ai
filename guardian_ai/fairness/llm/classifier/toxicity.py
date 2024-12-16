@@ -3,26 +3,34 @@ from typing import TYPE_CHECKING, List
 from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 
 if TYPE_CHECKING:
-    import torch
-    from transformers import pipeline
+    from detoxify import Detoxify
 else:
-    torch = LazyLoader("torch")
-    pipeline = LazyLoader("transformers", "pipeline", suppress_import_warnings=True)
+    Detoxify = LazyLoader("detoxify", "Detoxify", suppress_import_warnings=True)
 
 
-class ToxigenRoberta:
+class DetoxifyClassifier:
     """
-    A class to perform text classification using the Toxigen Roberta model.
+    A class to perform text classification using the original detoxify classifier
+    (see https://github.com/unitaryai/detoxify for the additional information).
 
-    This class uses a pre-trained Roberta model to classify text as toxic or not.
+    This class uses a pre-trained model to classify text as toxic or not.
     """
 
-    def __init__(self):
-        self.pipe = pipeline(
-            "text-classification",
-            model="tomh/toxigen_roberta",
-            device="cuda" if torch.cuda.is_available() else "cpu",
-        )
+    def __init__(self, variant="original"):
+        """
+        Creates an intance of DetoxifyClassifier
+
+        Parameters:
+        variant: str
+            A name of the model variant.
+            Supported variants: "original", "unbiased", "multilingual". Defaults to "original"
+        """
+        supported_variants = ["original", "unbiased", "multilingual"]
+        if variant not in supported_variants:
+            raise ValueError(
+                f"Expected `variant` must be one of {supported_variants}, but found {variant}"
+            )
+        self.model = Detoxify(variant)
 
     def score(self, texts: List[str]):
         """
@@ -40,12 +48,5 @@ class ToxigenRoberta:
             Scores closer to 1.0 indicate higher toxicity, while scores closer to 0.0
             indicate non-toxicity.
         """
-        labels = self.pipe(texts)
-        scores = []
-        for label_score in labels:
-            if label_score["label"] == "LABEL_1":
-                scores.append(label_score["score"])
-            else:
-                scores.append(1.0 - label_score["score"])
-
+        scores = self.model.predict(texts)["toxicity"]
         return scores
