@@ -1,4 +1,5 @@
 import json
+import os
 from typing import TYPE_CHECKING, List
 
 from guardian_ai.fairness.utils.lazy_loader import LazyLoader
@@ -22,7 +23,9 @@ class VLLMServer:
     Parameters
     ----------
     vllm_server_url : str
-        The URL of the vLLM server to query for generating completions.
+        The URL of the vLLM server used for generating completions.
+        Ensure the URL is valid by performing a GET request to `{vllm_server_url}/models`,
+        which should return a list of available models.
     model : str
         The name of the model to be used for generating completions. Ensure the model
         is compatible with the vLLM server configuration.
@@ -49,9 +52,17 @@ class VLLMServer:
             A list of lists, where each inner list contains the generated text completions
             for each respective prompt.
         """
-        data = {"model": self.model, "prompt": prompts, **kwargs}
+        return [self._generate_one(prompt, **kwargs) for prompt in prompts]
+
+    def _generate_one(self, prompt: str, **kwargs) -> str:
+        endpoint = os.path.join(self.vllm_server_url, "chat", "completions")
+        messages = [
+            {"role": "developer", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ]
+        data = {"model": self.model, "messages": messages, **kwargs}
         response = requests.post(
-            self.vllm_server_url,
+            endpoint,
             headers={"Content-Type": "application/json"},
             data=json.dumps(data),
         )
@@ -61,13 +72,4 @@ class VLLMServer:
             raise GuardianAIRuntimeError(
                 f"Error occurred when generating responses: {response.text}"
             )
-
-        completions = [[] for _ in range(len(prompts))]
-
-        completions_per_prompt = len(result["choices"]) // len(prompts)
-
-        for i, choice in enumerate(result["choices"]):
-            prompt_id = i // completions_per_prompt
-            completions[prompt_id].append(choice["text"])
-
-        return completions
+        return [result["choices"][i]["message"]["content"] for i in range(len(result["choices"]))]

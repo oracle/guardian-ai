@@ -10,8 +10,6 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
-from fairlearn.postprocessing import ThresholdOptimizer
-
 from guardian_ai.fairness.metrics import _get_fairness_metric, fairness_metrics_dict
 from guardian_ai.fairness.metrics.model import _valid_regression_metrics
 from guardian_ai.fairness.metrics.utils import (
@@ -33,6 +31,7 @@ if TYPE_CHECKING:
     from category_encoders.ordinal import OrdinalEncoder
     from sklearn.base import BaseEstimator
     from sklearn.model_selection import StratifiedShuffleSplit
+    from fairlearn.postprocessing import ThresholdOptimizer
 else:
     np = LazyLoader("numpy")
     pd = LazyLoader("pandas")
@@ -42,6 +41,7 @@ else:
     skl_metrics = LazyLoader("sklearn.metrics")
     StratifiedShuffleSplit = LazyLoader("sklearn.model_selection", "StratifiedShuffleSplit")
     OrdinalEncoder = LazyLoader("category_encoders.ordinal", "OrdinalEncoder")
+    ThresholdOptimizer = LazyLoader("fairlearn.postprocessing", "ThresholdOptimizer")
 
 
 @dyn_docstring("', '".join(fairness_metrics_dict), "', '".join(_supported_score_metric["binary"]))

@@ -6,12 +6,14 @@ from guardian_ai.fairness.llm.classifier import DetoxifyClassifier, LLMClassifie
 
 
 @pytest.fixture
-def toxigen_roberta():
+def detoxify_classifier():
     return DetoxifyClassifier()
 
 
-def test_classifier_score(toxigen_roberta):
-    scores = toxigen_roberta.score(["This is a test sentence.", "This is a second test sentence."])
+def test_classifier_score(detoxify_classifier):
+    scores = detoxify_classifier.score(
+        ["This is a test sentence.", "This is a second test sentence."]
+    )
     assert all(0 <= score <= 1 for score in scores)
 
 

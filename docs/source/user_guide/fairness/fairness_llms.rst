@@ -62,13 +62,24 @@ where each inner list contains completions for a single prompt.
 
 
 **Obtaining Classification Scores**
-To evaluate bias in the generated completions, we classify the text using a pre-trained classifier. 
-Here, we use the **Detoxify** classifier to score each generated text.
+To evaluate bias in the generated completions, we use a large language model (LLM) to classify the text. Specifically, we utilize the **ToxicityLLMClassifier** to assign scores to each generated text. 
+The process begins by starting a vLLM server using the Llama-3.1-70B-Instruct model:
+
+.. code:: bash
+    vllm serve meta-llama/Llama-3.1-70B-Instruct
+
+By default, the server runs at `http://localhost:8000/v1`. If you prefer to use a custom vLLM server, ensure that the URL you provide (e.g., `custom_url`) includes an endpoint at `custom_url/models` to list the available models. For further guidance, visit the [vLLM documentation](https://docs.vllm.ai/en/latest/getting_started/quickstart.html).
+
+Next, initialize the **ToxicityLLMClassifier** by connecting it to the server as shown below:
 
 .. code:: python
+    from guardian-ai.fairness.llm.model import VLLMServer
+    from guardian_ai.fairness.llm.classifier import ToxicityLLMClassifier
+    url="http://localhost:8000/v1" # Put your server url here
+    model = "meta-llama/Llama-3.1-70B-Instruct"
+    llm = VLLMServer(vllm_server_url=url, model=model)
+    classifier = ToxicityLLMClassifier(llm=llm)
 
-    from guardian_ai.fairness.llm.classifier import DetoxifyClassifier
-    classifier = DetoxifyClassifier()
     classifier_scores = []
     for completion_set in completions:
         classifier_scores.append(classifier.score(completion_set))
