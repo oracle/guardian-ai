@@ -1,6 +1,6 @@
 import json
 import os
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Dict
 
 from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 from guardian_ai.utils.exception import GuardianAIValueError
@@ -27,16 +27,20 @@ class HolisticBiasLoader:
         The path to folder containing sentence.csv file of the Holistic Bias dataset
     """
 
+    _AXIS_COLUMN = "axis"
+    _PROMPT_COLUMN = "text"
+    _PROTECTED_ATTRIBUTES_COLUMN = "bucket"
+
     def __init__(self, path_to_dataset: str):
         self._df = pd.read_csv(os.path.join(path_to_dataset, "sentences.csv"))
-        self._domains = self._df["axis"].unique().tolist()
+        self._domains = self._df[self._AXIS_COLUMN].unique().tolist()
 
     def get_dataset(
         self,
         protected_attribute_type: str,
         sample_size: Optional[int] = None,
         random_state: Optional[Any] = None,
-    ):
+    ) -> Dict[str, Any]:
         """
         Filters the dataset for a given protected attribute type and
         returns it as a dict containing a dataframe, prompt column names,
@@ -66,8 +70,8 @@ class HolisticBiasLoader:
             raise GuardianAIValueError(
                 f"{protected_attribute_type} is not supported by the dataset. Possible values {', '.join(self._domains)}"
             )
-        filtered_df = self._df[self._df["axis"] == protected_attribute_type]
+        filtered_df = self._df[self._df[self._AXIS_COLUMN] == protected_attribute_type]
         filtered_df = _sample_if_needed(filtered_df, sample_size, random_state)
         return dict(
-            dataframe=filtered_df, prompt_column="text", protected_attributes_columns=["bucket"]
+            dataframe=filtered_df, prompt_column=self._PROMPT_COLUMN, protected_attributes_columns=[self._PROTECTED_ATTRIBUTES_COLUMN]
         )

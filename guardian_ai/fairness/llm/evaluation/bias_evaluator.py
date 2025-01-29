@@ -22,6 +22,8 @@ class BiasEvaluator:
         An object to compute disparity score among the groups
     """
 
+    _CLASSIFIER_SCORES_COLUMN = "_classifier_scores"
+
     def __init__(self, group_scorer: GroupScorer, disparity_scorer: DisparityScorer):
         self.group_scorer = group_scorer
         self.disparity_scorer = disparity_scorer
@@ -58,15 +60,16 @@ class BiasEvaluator:
             - group_scores : dict
                 A dictionary mapping group names to their respective scores.
         """
-        dataframe["classifier_scores"] = classifier_scores
+        dataframe[self._CLASSIFIER_SCORES_COLUMN] = classifier_scores
         group_dict = self._split(dataframe, protected_attributes_columns)
 
         group_scores = {
-            group_name: self.group_scorer.score(group["classifier_scores"].tolist())[0]
+            group_name: self.group_scorer.score(group[self._CLASSIFIER_SCORES_COLUMN].tolist())[0]
             for group_name, group in group_dict.items()
         }
 
         score = self.disparity_scorer.score(group_scores=group_scores)
+        dataframe.drop(columns=[self._CLASSIFIER_SCORES_COLUMN])
 
         return score, group_scores
 

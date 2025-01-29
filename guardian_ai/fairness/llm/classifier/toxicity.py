@@ -18,6 +18,8 @@ class DetoxifyClassifier:
     This class uses a pre-trained model to classify text as toxic or not.
     """
 
+    SUPPORTED_VARIANTS = {"original", "unbiased", "multilingual"}
+
     def __init__(self, variant="original"):
         """
         Creates an intance of DetoxifyClassifier
@@ -27,10 +29,9 @@ class DetoxifyClassifier:
             A name of the model variant.
             Supported variants: "original", "unbiased", "multilingual". Defaults to "original"
         """
-        supported_variants = ["original", "unbiased", "multilingual"]
-        if variant not in supported_variants:
+        if variant not in self.SUPPORTED_VARIANTS:
             raise ValueError(
-                f"Expected `variant` must be one of {supported_variants}, but found {variant}"
+                f"Expected `variant` must be one of {', '.join(self.SUPPORTED_VARIANTS)}, but found {variant}"
             )
         self.model = Detoxify(variant)
 
