@@ -45,10 +45,10 @@ fairness = [
     "fairlearn==0.10.0",
 ]
 fairness-llm = [
-    "vllm==0.5.5",
-    "transformers==4.45.2",
+    "vllm",
+    "transformers",
     "requests",
-    "torch==2.4.0",
+    "torch",
     "detoxify",
 ]
 
@@ -63,7 +63,7 @@ all-optional = [
 
 [project.urls]
 "Repository" = "https://github.com/oracle/guardian-ai"
-"Documentation" = "https://oralce-guardian-ai.readthedocs.io/en/latest/index.html"
+"Documentation" = "https://oracle-guardian-ai.readthedocs.io/en/latest/index.html"
 
 [tool.flit.module]
 name = "guardian_ai"
