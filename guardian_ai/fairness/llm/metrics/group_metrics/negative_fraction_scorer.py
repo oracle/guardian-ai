@@ -1,6 +1,11 @@
-from typing import List
+from typing import TYPE_CHECKING, List
 
-import numpy as np
+from guardian_ai.fairness.utils.lazy_loader import LazyLoader
+
+if TYPE_CHECKING:
+    import numpy as np
+else:
+    np = LazyLoader("numpy")
 
 
 class NegativeFractionScorer:

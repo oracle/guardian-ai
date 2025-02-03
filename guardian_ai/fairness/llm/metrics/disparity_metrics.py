@@ -4,8 +4,10 @@ from guardian_ai.fairness.metrics.utils import _get_check_reduction
 from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 
 if TYPE_CHECKING:
+    import numpy as np
     import pandas as pd
 else:
+    np = LazyLoader("numpy")
     pd = LazyLoader("pandas")
 
 
