@@ -1,5 +1,7 @@
 from typing import List
 
+import numpy as np
+
 
 class ExpectedMaximumNegativityScorer:
     """
@@ -28,6 +30,7 @@ class ExpectedMaximumNegativityScorer:
             - individual_max_scores : List[float]
                 A list of maximum scores, one for each set of classification scores.
         """
-        scores = [max(score_set) for score_set in classification_scores]
-        average_max_score = sum(scores) / len(scores) if scores else 0.0
+
+        scores = np.array(classification_scores).max(axis=1)
+        average_max_score = scores.mean()
         return average_max_score, scores

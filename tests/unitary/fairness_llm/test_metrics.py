@@ -11,15 +11,15 @@ from guardian_ai.fairness.llm.metrics import (
 
 @pytest.fixture
 def dummy_raw_scores():
-    return [[0.1, 0.2, 0.3, 0.4, 0.6], [0.1, 0.1, 0.2, 0.3, 0.2]]
+    return [[0.1, 0.5, 0.3, 0.6, 0.7], [0.1, 0.1, 0.2, 0.3, 0.2], [0.5, 0.1, 0.5, 0.1, 0.5]]
 
 
 @pytest.mark.parametrize(
     "group_scorer_cls,expected_scores,expected_raw_scores",
     [
-        (ExpectedMaximumNegativityScorer, 0.45, [0.6, 0.3]),
-        (NegativeProbabilityScorer, 0.5, [1, 0]),
-        (NegativeFractionScorer, 0.1, [0.2, 0]),
+        (ExpectedMaximumNegativityScorer, 0.5, [0.7, 0.3, 0.5]),
+        (NegativeProbabilityScorer, 1 / 3, [1, 0, 0]),
+        (NegativeFractionScorer, 0.4 / 3, [0.4, 0, 0]),
     ],
 )
 def test_group_scorer_score(

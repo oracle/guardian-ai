@@ -1,6 +1,6 @@
 import json
 import os
-from typing import TYPE_CHECKING, Any, Optional, Dict
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 from guardian_ai.utils.exception import GuardianAIValueError
@@ -73,5 +73,7 @@ class HolisticBiasLoader:
         filtered_df = self._df[self._df[self._AXIS_COLUMN] == protected_attribute_type]
         filtered_df = _sample_if_needed(filtered_df, sample_size, random_state)
         return dict(
-            dataframe=filtered_df, prompt_column=self._PROMPT_COLUMN, protected_attributes_columns=[self._PROTECTED_ATTRIBUTES_COLUMN]
+            dataframe=filtered_df,
+            prompt_column=self._PROMPT_COLUMN,
+            protected_attributes_columns=[self._PROTECTED_ATTRIBUTES_COLUMN],
         )

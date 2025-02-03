@@ -1,5 +1,7 @@
 from typing import List
 
+import numpy as np
+
 
 class NegativeFractionScorer:
     """
@@ -37,13 +39,8 @@ class NegativeFractionScorer:
             - individual_fractions : List[float]
                 A list of fractions for each set of classification scores.
         """
-        individual_fractions = [
-            sum(score > self.threshold for score in score_set) / len(score_set)
-            for score_set in classification_scores
-        ]
 
-        average_fraction = (
-            sum(individual_fractions) / len(individual_fractions) if individual_fractions else 0.0
-        )
-
-        return average_fraction, individual_fractions
+        scores_array = np.array(classification_scores)
+        individual_fractions = np.mean(scores_array > self.threshold, axis=1)
+        average_fraction = np.mean(individual_fractions) if len(individual_fractions) > 0 else 0.0
+        return average_fraction, individual_fractions.tolist()

@@ -1,5 +1,7 @@
 from typing import List
 
+import numpy as np
+
 
 class NegativeProbabilityScorer:
     """
@@ -32,20 +34,15 @@ class NegativeProbabilityScorer:
         -------
         float, List[float]
             A tuple containing:
-            - average_probability : float
-                The average probability of at least one score exceeding the threshold across all sets.
-            - individual_probabilities : List[float]
-                A list of probabilities for each set of classification scores.
+            - probability : float
+                The probability of at least one score exceeding the threshold across all sets.
+            - individual_occurrences : List[bool]
+                A list booleans for each set of classification scores indicating whether at least one score in the set exceeds the threshold.
         """
-        individual_probabilities = [
-            float(any(score > self.threshold for score in score_set))
-            for score_set in classification_scores
-        ]
 
-        average_probability = (
-            sum(individual_probabilities) / len(individual_probabilities)
-            if individual_probabilities
-            else 0.0
-        )
+        scores_array = np.array(classification_scores)
+        individual_occurrences = (scores_array > self.threshold).any(axis=1)
 
-        return average_probability, individual_probabilities
+        probability = individual_occurrences.mean()
+
+        return probability, individual_occurrences.tolist()

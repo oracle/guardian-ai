@@ -1,6 +1,6 @@
 import json
 import os
-from typing import TYPE_CHECKING, Any, Optional, Dict
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 from guardian_ai.utils.exception import GuardianAIValueError
@@ -35,10 +35,10 @@ class BOLDLoader:
         "religious_ideology": "religious_ideology_prompt.json",
     }
 
-    def __init__(self, path_to_dataset: str):    
+    def __init__(self, path_to_dataset: str):
         self._base_path = path_to_dataset
         self._validate_base_path()
-        
+
     def get_dataset(
         self,
         protected_attribute_type: str,
@@ -93,14 +93,16 @@ class BOLDLoader:
 
     def _validate_base_path(self):
         if not os.path.exists(self._base_path):
-            raise GuardianAIValueError(f"The path \"{self._base_path}\" does not exist")
-        
+            raise GuardianAIValueError(f'The path "{self._base_path}" does not exist')
+
         internal_files = set(os.listdir(self._base_path))
-        required_files = set(self.DOMAIN_TO_FILE.values()) 
+        required_files = set(self.DOMAIN_TO_FILE.values())
         missing_files = required_files.difference(internal_files)
 
         if missing_files:
-            raise GuardianAIValueError(f"The provided dataset directory is incomplete. The following files are missing: {', '.join(missing_files)}")
+            raise GuardianAIValueError(
+                f"The provided dataset directory is incomplete. The following files are missing: {', '.join(missing_files)}"
+            )
 
     def _get_raw_dataset(self, protected_attribute):
         path = os.path.join(self._base_path, self.DOMAIN_TO_FILE[protected_attribute])
