@@ -6,7 +6,7 @@
 
 from abc import abstractmethod
 from enum import Enum
-from typing import List, Dict
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
@@ -168,9 +168,7 @@ class Dataset:
         self.df_x, self.df_y = df_x, df_y
         self.splits = {}
 
-    def split_dataset(
-        self, seed: int, split_array: List[float], split_names: List[str] = None
-    ):
+    def split_dataset(self, seed: int, split_array: List[float], split_names: List[str] = None):
         """
         Splits dataset according to the specified fractions.
 
@@ -261,11 +259,7 @@ class Dataset:
             x_split, y_split = self.splits[split_name]
             x_splits.append(x_split)
             y_splits.append(y_split)
-        x_merged = (
-            sp.vstack(x_splits)
-            if (sp.issparse(x_splits[0]))
-            else np.concatenate(x_splits)
-        )
+        x_merged = sp.vstack(x_splits) if (sp.issparse(x_splits[0])) else np.concatenate(x_splits)
         y_merged = pd.concat(y_splits)
         return x_merged, y_merged
 
@@ -331,9 +325,7 @@ class Dataset:
         """
         X_attack_in, y_attack_in = self.splits[attack_in_set_name]
         X_attack_out, y_attack_out = self.splits[attack_out_set_name]
-        return self._create_attack_set(
-            X_attack_in, y_attack_in, X_attack_out, y_attack_out
-        )
+        return self._create_attack_set(X_attack_in, y_attack_in, X_attack_out, y_attack_out)
 
     # sample a fraction of the train set to create attack in set, and merge with the given
     # out set to generate the full attack set
@@ -344,9 +336,7 @@ class Dataset:
             train_set_name, frac=train_fraction, seed=seed
         )
         X_attack_out, y_attack_out = self.splits[attack_out_set_name]
-        return self._create_attack_set(
-            X_attack_in, y_attack_in, X_attack_out, y_attack_out
-        )
+        return self._create_attack_set(X_attack_in, y_attack_in, X_attack_out, y_attack_out)
 
     @abstractmethod
     def load_data(
@@ -503,9 +493,7 @@ class ClassificationDataset(Dataset):
             )
 
             # pipeline for numerical data
-            num_preprocessing = make_pipeline(
-                SimpleImputer(strategy="mean"), MinMaxScaler()
-            )
+            num_preprocessing = make_pipeline(SimpleImputer(strategy="mean"), MinMaxScaler())
 
             # combine both pipeline using a columnTransformer
             self.column_transformer = ColumnTransformer(
@@ -650,12 +638,8 @@ class ClassificationDataset(Dataset):
         X_target_test, y_target_test = self.splits[DataSplit.TARGET_TEST.name]
         # encoding the data
         self.fit_encoders(X_target_train, y_target_train)
-        X_target_train, y_target_train = self.encode_data(
-            X_target_train, y_target_train
-        )
-        X_target_valid, y_target_valid = self.encode_data(
-            X_target_valid, y_target_valid
-        )
+        X_target_train, y_target_train = self.encode_data(X_target_train, y_target_train)
+        X_target_valid, y_target_valid = self.encode_data(X_target_valid, y_target_valid)
         X_target_test, y_target_test = self.encode_data(X_target_test, y_target_test)
 
         self.target_model_data = TargetModelData(
@@ -691,9 +675,7 @@ class ClassificationDataset(Dataset):
         )
 
         # encode data
-        X_attack_train, y_attack_train = self.encode_data(
-            X_attack_train, y_attack_train
-        )
+        X_attack_train, y_attack_train = self.encode_data(X_attack_train, y_attack_train)
         X_attack_test, y_attack_test = self.encode_data(X_attack_test, y_attack_test)
 
         self.attack_model_data = AttackModelData(

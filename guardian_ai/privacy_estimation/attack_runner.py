@@ -4,28 +4,30 @@
 # Copyright (c) 2023, 2024 Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
-from guardian_ai.privacy_estimation.dataset import (
-    ClassificationDataset,
-    TargetModelData,
-    AttackModelData,
-)
+from typing import Dict, List
+
+from sklearn.linear_model import LogisticRegression
+
 from guardian_ai.privacy_estimation.attack import (
     AttackType,
-    LossBasedBlackBoxAttack,
     ConfidenceBasedBlackBoxAttack,
-    ExpectedLossBasedBlackBoxAttack,
     ExpectedConfidenceBasedBlackBoxAttack,
+    ExpectedLossBasedBlackBoxAttack,
+    LossBasedBlackBoxAttack,
     ThresholdClassifier,
 )
 from guardian_ai.privacy_estimation.combined_attacks import (
     CombinedBlackBoxAttack,
     CombinedWithMerlinBlackBoxAttack,
 )
+from guardian_ai.privacy_estimation.dataset import (
+    AttackModelData,
+    ClassificationDataset,
+    TargetModelData,
+)
 from guardian_ai.privacy_estimation.merlin_attack import MerlinAttack
-from guardian_ai.privacy_estimation.morgan_attack import MorganAttack, MorganClassifier
 from guardian_ai.privacy_estimation.model import TargetModel
-from typing import List, Dict
-from sklearn.linear_model import LogisticRegression
+from guardian_ai.privacy_estimation.morgan_attack import MorganAttack, MorganClassifier
 
 
 class AttackRunner:
@@ -89,16 +91,10 @@ class AttackRunner:
             )
 
             result_string = (
-                target_model.get_model_name()
-                + "\t"
-                + str(train_f1)
-                + "\t"
-                + str(test_f1)
+                target_model.get_model_name() + "\t" + str(train_f1) + "\t" + str(test_f1)
             )
 
-            self.target_model_result_strings[
-                target_model.get_model_name()
-            ] = result_string
+            self.target_model_result_strings[target_model.get_model_name()] = result_string
 
     def _get_attack_object(
         self,
@@ -139,9 +135,7 @@ class AttackRunner:
         elif attack_type == AttackType.CombinedBlackBoxAttack:
             if use_cache:
                 loss_attack = self.attack_cache[AttackType.LossBasedBlackBoxAttack]
-                confidence_attack = self.attack_cache[
-                    AttackType.ConfidenceBasedBlackBoxAttack
-                ]
+                confidence_attack = self.attack_cache[AttackType.ConfidenceBasedBlackBoxAttack]
                 attack = CombinedBlackBoxAttack(
                     LogisticRegression(),
                     loss_attack=loss_attack,
@@ -152,9 +146,7 @@ class AttackRunner:
         elif attack_type == AttackType.CombinedWithMerlinBlackBoxAttack:
             if use_cache:
                 loss_attack = self.attack_cache[AttackType.LossBasedBlackBoxAttack]
-                confidence_attack = self.attack_cache[
-                    AttackType.ConfidenceBasedBlackBoxAttack
-                ]
+                confidence_attack = self.attack_cache[AttackType.ConfidenceBasedBlackBoxAttack]
                 merlin_attack = self.attack_cache[AttackType.MerlinAttack]
                 attack = CombinedWithMerlinBlackBoxAttack(
                     LogisticRegression(),
@@ -249,9 +241,7 @@ class AttackRunner:
 
         # figure out if we can use any of the previously cached values
         loss_exists = AttackType.LossBasedBlackBoxAttack in self.attack_cache.keys()
-        confidence_exists = (
-            AttackType.ConfidenceBasedBlackBoxAttack in self.attack_cache.keys()
-        )
+        confidence_exists = AttackType.ConfidenceBasedBlackBoxAttack in self.attack_cache.keys()
         merlin_ratio_exists = AttackType.MerlinAttack in self.attack_cache.keys()
 
         use_cache = False
@@ -283,12 +273,7 @@ class AttackRunner:
             self.attack_cache[attack.name] = attack
 
         # Evaluate the attack
-        print(
-            "Running "
-            + attack.name
-            + " against target model "
-            + target_model.get_model_name()
-        )
+        print("Running " + attack.name + " against target model " + target_model.get_model_name())
         print("Attack Metrics:")
         attack_metrics = attack.evaluate_attack(
             target_model,

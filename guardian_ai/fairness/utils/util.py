@@ -7,9 +7,7 @@
 """Module containing generic helper classes and functions."""
 from typing import Dict, List
 
-_supported_score_metric: Dict[
-    str, List[str]
-] = {  # the first value entry will be default scoring
+_supported_score_metric: Dict[str, List[str]] = {  # the first value entry will be default scoring
     "binary": [
         "neg_log_loss",
         "roc_auc",

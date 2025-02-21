@@ -4,9 +4,10 @@
 # Copyright (c) 2023, 2024 Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
+from typing import List
+
 import pandas as pd
 from sklearn.model_selection import GridSearchCV
-from typing import List
 
 
 class AttackTuner:
@@ -101,9 +102,7 @@ class AttackTuner:
         # From the best candidates, select the model with the best f1
         best_f1_high_precision_index = 0
         try:
-            best_f1_high_precision_index = high_precision_cv_results[
-                "mean_test_f1"
-            ].idxmax()
+            best_f1_high_precision_index = high_precision_cv_results["mean_test_f1"].idxmax()
             print(
                 "\nThe selected final model with the best f1:\n"
                 f"{high_precision_cv_results.loc[best_f1_high_precision_index]}"
@@ -176,9 +175,7 @@ class AttackTuner:
         self.print_dataframe(high_recall_cv_results)
 
         # From the best candidates, select the fastest model to predict
-        fastest_top_recall_high_precision_index = high_recall_cv_results[
-            "mean_score_time"
-        ].idxmin()
+        fastest_top_recall_high_precision_index = high_recall_cv_results["mean_score_time"].idxmin()
 
         print(
             "\nThe selected final model is the fastest to predict out of the previously\n"

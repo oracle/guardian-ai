@@ -44,17 +44,26 @@ fairness = [
     "plotly==5.4.0",
     "fairlearn==0.10.0",
 ]
+fairness-llm = [
+    "vllm",
+    "transformers",
+    "requests",
+    "torch",
+    "detoxify",
+]
+
 privacy = [
     "scipy==1.10.0",
     "matplotlib==3.5.3",
 ]
+
 all-optional = [
-    "oracle-guardian-ai[fairness, privacy]",
+    "oracle-guardian-ai[fairness, privacy, fairness-llm]",
 ]
 
 [project.urls]
 "Repository" = "https://github.com/oracle/guardian-ai"
-"Documentation" = "https://oralce-guardian-ai.readthedocs.io/en/latest/index.html"
+"Documentation" = "https://oracle-guardian-ai.readthedocs.io/en/latest/index.html"
 
 [tool.flit.module]
 name = "guardian_ai"
