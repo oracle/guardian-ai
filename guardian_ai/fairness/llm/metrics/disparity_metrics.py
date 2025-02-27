@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Union, Optional
 
 from guardian_ai.fairness.metrics.utils import _get_check_reduction
 from guardian_ai.fairness.utils.lazy_loader import LazyLoader
@@ -26,10 +26,10 @@ class DisparityScorer:
             None: Do not apply any reduction
     """
 
-    def __init__(self, reduction: str | None = "max"):
+    def __init__(self, reduction: Optional[str] = "max"):
         self.reduction = _get_check_reduction(reduction)
 
-    def score(self, group_scores: Dict[Any, float] | pd.Series) -> float | Dict[Any, float]:
+    def score(self, group_scores: Union[Dict[Any, float],pd.Series]) -> Union[float,Dict[Any, float]]:
         """
         Computes the disparity between subgroups in the dataset.
 
