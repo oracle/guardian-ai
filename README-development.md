@@ -16,10 +16,10 @@ for development and testing purposes.
 Install Anaconda from `https://repo.continuum.io/miniconda/` for the operating system you are using.
 
 In the terminal client, enter the following where <yourenvname> is the name you want to call your environment,
-and set the Python version you want to use. Oracle Guardian AI Project requires Python >=3.8.
+and set the Python version you want to use. Oracle Guardian AI Project requires Python >=3.9.
 
 ```bash
-    conda create -n <yourenvname> python=3.8 anaconda
+    conda create -n <yourenvname> python=3.9 anaconda
 ```
 
 

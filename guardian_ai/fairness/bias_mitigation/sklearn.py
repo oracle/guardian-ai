@@ -6,21 +6,36 @@
 
 """Sklearn API for bias mitigation"""
 from __future__ import annotations
-
 import copy
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
+
+from guardian_ai.fairness.utils.lazy_loader import LazyLoader
 from guardian_ai.fairness.metrics import _get_fairness_metric, fairness_metrics_dict
-from guardian_ai.fairness.metrics.model import _valid_regression_metrics
+from guardian_ai.utils.exception import GuardianAITypeError, GuardianAIValueError
+from guardian_ai.fairness.utils.util import dyn_docstring, _supported_score_metric
 from guardian_ai.fairness.metrics.utils import (
+    _positive_fairness_names,
     _automl_to_fairlearn_metric_names,
+)
+from guardian_ai.fairness.metrics.model import (
+    _valid_regression_metrics,
+)
+from guardian_ai.fairness.metrics.utils import (
     _get_rate_scorer,
     _inhouse_metrics,
-    _positive_fairness_names,
 )
-from guardian_ai.fairness.utils.lazy_loader import LazyLoader
-from guardian_ai.fairness.utils.util import _supported_score_metric, dyn_docstring
-from guardian_ai.utils.exception import GuardianAITypeError, GuardianAIValueError
+
 
 if TYPE_CHECKING:
     import numpy as np
@@ -39,12 +54,16 @@ else:
     BaseEstimator = LazyLoader("sklearn.base", "BaseEstimator")
     go = LazyLoader("plotly.graph_objects")
     skl_metrics = LazyLoader("sklearn.metrics")
-    StratifiedShuffleSplit = LazyLoader("sklearn.model_selection", "StratifiedShuffleSplit")
+    StratifiedShuffleSplit = LazyLoader(
+        "sklearn.model_selection", "StratifiedShuffleSplit"
+    )
     OrdinalEncoder = LazyLoader("category_encoders.ordinal", "OrdinalEncoder")
     ThresholdOptimizer = LazyLoader("fairlearn.postprocessing", "ThresholdOptimizer")
 
 
-@dyn_docstring("', '".join(fairness_metrics_dict), "', '".join(_supported_score_metric["binary"]))
+@dyn_docstring(
+    "', '".join(fairness_metrics_dict), "', '".join(_supported_score_metric["binary"])
+)
 class ModelBiasMitigator:
     r"""
     Class to mitigate the bias of an already fitted machine learning model.
@@ -237,7 +256,9 @@ class ModelBiasMitigator:
         self._constraint_target = constraint_target
         self._constraint_type = constraint_type
         self._constraint_value = constraint_value
-        self._base_estimator_uses_protected_attributes = base_estimator_uses_protected_attributes
+        self._base_estimator_uses_protected_attributes = (
+            base_estimator_uses_protected_attributes
+        )
         self._n_trials_per_group = n_trials_per_group
         self._time_limit = time_limit
         self._subsampling = subsampling
@@ -300,8 +321,12 @@ class ModelBiasMitigator:
             if self.fairness_metric_name in _valid_regression_metrics:
                 adjusted_fairness_regressions = []
                 base_fairness_trial = self._regression_metric_trials_["base"]
-                adjusted_fairness_trial = self._get_outcome_rates(self._y, probas, self._groups)
-                self._regression_metric_trials_[trial._trial_id] = adjusted_fairness_trial
+                adjusted_fairness_trial = self._get_outcome_rates(
+                    self._y, probas, self._groups
+                )
+                self._regression_metric_trials_[trial._trial_id] = (
+                    adjusted_fairness_trial
+                )
                 for (
                     group_fairness_name,
                     group_fairness_value,
@@ -311,22 +336,29 @@ class ModelBiasMitigator:
                         adjusted_fairness_regressions.append(
                             min(
                                 0,
-                                group_fairness_value - base_fairness_trial[group_fairness_name],
+                                group_fairness_value
+                                - base_fairness_trial[group_fairness_name],
                             )
                         )
                     else:
                         adjusted_fairness_regressions.append(
                             min(
                                 0,
-                                base_fairness_trial[group_fairness_name] - group_fairness_value,
+                                base_fairness_trial[group_fairness_name]
+                                - group_fairness_value,
                             )
                         )
 
-                avg_adjusted_fairness_regression = sum(adjusted_fairness_regressions) / len(
+                avg_adjusted_fairness_regression = sum(
                     adjusted_fairness_regressions
+                ) / len(adjusted_fairness_regressions)
+                self._avg_fairness_regression_[trial._trial_id] = (
+                    avg_adjusted_fairness_regression
                 )
-                self._avg_fairness_regression_[trial._trial_id] = avg_adjusted_fairness_regression
-            if self.fairness_metric_name in _valid_regression_metrics and self._third_objective:
+            if (
+                self.fairness_metric_name in _valid_regression_metrics
+                and self._third_objective
+            ):
                 return (
                     perf + penalty_acc,
                     fairness + penalty_fairness,
@@ -406,21 +438,29 @@ class ModelBiasMitigator:
             )
 
         if self._n_trials_per_group is not None:
-            if not isinstance(self._n_trials_per_group, int) or self._n_trials_per_group <= 0:
+            if (
+                not isinstance(self._n_trials_per_group, int)
+                or self._n_trials_per_group <= 0
+            ):
                 raise GuardianAIValueError(
                     "`n_trials_per_group` should be a positive integer or None, received "
                     f"{self._n_trials_per_group} instead."
                 )
 
         if self._time_limit is not None:
-            if not isinstance(self._time_limit, (float, int)) or self._time_limit <= 0.0:
+            if (
+                not isinstance(self._time_limit, (float, int))
+                or self._time_limit <= 0.0
+            ):
                 raise GuardianAIValueError(
                     "`time_limit` should be a positive float or None, received "
                     f"{self._time_limit} instead."
                 )
 
         if self._n_trials_per_group is None and self._time_limit is None:
-            raise GuardianAIValueError("`n_trials_per_group` and `time_limit` cannot both be None.")
+            raise GuardianAIValueError(
+                "`n_trials_per_group` and `time_limit` cannot both be None."
+            )
 
         if not isinstance(self._subsampling, int) or self._subsampling <= 0:
             if not np.isinf(self._subsampling):
@@ -438,7 +478,10 @@ class ModelBiasMitigator:
                 f"{self._regularization_factor} instead."
             )
 
-        if not isinstance(self._favorable_label_idx, int) or self._favorable_label_idx < 0:
+        if (
+            not isinstance(self._favorable_label_idx, int)
+            or self._favorable_label_idx < 0
+        ):
             raise GuardianAIValueError(
                 "`favorable_label_idx` should be a non-negative integer, received "
                 f"{self._favorable_label_idx} instead."
@@ -502,12 +545,18 @@ class ModelBiasMitigator:
             self.accuracy_metric_name = accuracy_metric
             # Always true because scores are inverted by sklearn when needed
             self._higher_accuracy_is_better = True
+
+            """Direct use of `_ProbaScorer` and `_ThresholdScorer` is deprecated after version 1.4
+            Consider checking response methods dynamically. See: https://github.com/scikit-learn/scikit-learn/pull/26840/files"""
+
             self._accuracy_metric_uses_probas = isinstance(
                 metric_object,
-                (
-                    skl_metrics._scorer._ProbaScorer,
-                    skl_metrics._scorer._ThresholdScorer,
-                ),
+                skl_metrics._scorer._Scorer,
+            ) and (
+                skl_metrics._scorer._check_response_method(
+                    self._base_estimator, metric_object._response_method
+                ).__name__
+                in ["predict_proba", "decision_function"]
             )
         elif callable(accuracy_metric):
             if self._higher_accuracy_is_better == "auto":
@@ -704,7 +753,9 @@ class ModelBiasMitigator:
         self._regression_metric_trials_ = {}
         self._avg_fairness_regression_ = {}
         self._accuracy_base_ = self._get_accuracy_score(y, self._probas_predicted)
-        self._fairness_base_ = self._get_fairness_score(y, self._probas_predicted, groups)
+        self._fairness_base_ = self._get_fairness_score(
+            y, self._probas_predicted, groups
+        )
 
         if self.fairness_metric_name in _valid_regression_metrics:
             self._regression_metric_trials_["base"] = self._get_outcome_rates(
@@ -712,7 +763,9 @@ class ModelBiasMitigator:
             )
 
         sampler = optuna.samplers.NSGAIISampler(seed=self._random_seed)
-        study = optuna.create_study(directions=self._get_optimization_directions(), sampler=sampler)
+        study = optuna.create_study(
+            directions=self._get_optimization_directions(), sampler=sampler
+        )
 
         if self._unique_group_names_ is None:
             raise GuardianAIValueError("_unique_group_names cannot be None!")
@@ -773,7 +826,9 @@ class ModelBiasMitigator:
         self._unique_groups_ = unique_groups.values
 
         unique_groups["name"] = unique_groups.apply(
-            lambda x: "--".join([f"{attr}={x[attr]}" for attr in self._protected_attribute_names]),
+            lambda x: "--".join(
+                [f"{attr}={x[attr]}" for attr in self._protected_attribute_names]
+            ),
             axis=1,
         )
         self._unique_group_names_ = unique_groups["name"].tolist()
@@ -847,7 +902,9 @@ class ModelBiasMitigator:
             stratas = pd.concat((groups, y), axis=1)
             stratas = OrdinalEncoder().fit_transform(stratas)
 
-            _, idxs = next(iter(sss.split(np.arange(0, len(X)).reshape(-1, 1), y=stratas)))
+            _, idxs = next(
+                iter(sss.split(np.arange(0, len(X)).reshape(-1, 1), y=stratas))
+            )
 
             return X.iloc[idxs], y.iloc[idxs], group_names.iloc[idxs], groups.iloc[idxs]
 
@@ -997,17 +1054,24 @@ class ModelBiasMitigator:
             for metric in [self.accuracy_metric_name, self.fairness_metric_name]
         ]
         metric_names = copy.deepcopy(regularized_metric_names)
-        if self.fairness_metric_name in _valid_regression_metrics and self._third_objective:
+        if (
+            self.fairness_metric_name in _valid_regression_metrics
+            and self._third_objective
+        ):
             metric_names.append("Third Objective: " + self._third_objective_name)
 
         if self.fairness_metric_name in _valid_regression_metrics:
-            fairness_trial_names = list(list(self._regression_metric_trials_.items())[0][1].keys())
+            fairness_trial_names = list(
+                list(self._regression_metric_trials_.items())[0][1].keys()
+            )
             _prefix = (
                 "PPR"
                 if self.fairness_metric_name == "statistical_parity"
                 else self.fairness_metric_name
             )
-            fairness_trial_names = [f"{_prefix}_{name}" for name in fairness_trial_names]
+            fairness_trial_names = [
+                f"{_prefix}_{name}" for name in fairness_trial_names
+            ]
 
             df = pd.DataFrame(
                 [
@@ -1022,7 +1086,10 @@ class ModelBiasMitigator:
             )
         else:
             df = pd.DataFrame(
-                [(*trial.values, *trial.params.values()) for trial in study.best_trials],
+                [
+                    (*trial.values, *trial.params.values())
+                    for trial in study.best_trials
+                ],
                 columns=regularized_metric_names + self._multiplier_names_,
             )
 
@@ -1033,16 +1100,22 @@ class ModelBiasMitigator:
                 avg_fairness_regression_best_trials.append(
                     self._avg_fairness_regression_[trial._trial_id]
                 )
-            df[self._third_objective_name] = pd.Series(avg_fairness_regression_best_trials).values
+            df[self._third_objective_name] = pd.Series(
+                avg_fairness_regression_best_trials
+            ).values
             df[self._third_objective_name] = (
                 np.sign(df[self._third_objective_name]) * df[self._third_objective_name]
             )
-            df["Third Objective: " + self._third_objective_name] = df[self._third_objective_name]
+            df["Third Objective: " + self._third_objective_name] = df[
+                self._third_objective_name
+            ]
 
         # Unwrap regularization factors
         regularization_factors = np.array(
             [
-                self._get_multiplier_penalty(multipliers, group_ranges, self._unique_group_names_)
+                self._get_multiplier_penalty(
+                    multipliers, group_ranges, self._unique_group_names_
+                )
                 for _, multipliers in df[self._multiplier_names_].iterrows()
             ],
             dtype=float,
@@ -1051,17 +1124,22 @@ class ModelBiasMitigator:
         df["regularization_fairness"] = regularization_factors[:, 1]
 
         df[self.accuracy_metric_name] = (
-            df[f"{self.accuracy_metric_name}_regularized"] - df["regularization_accuracy"]
+            df[f"{self.accuracy_metric_name}_regularized"]
+            - df["regularization_accuracy"]
         )
         df[self.fairness_metric_name] = (
-            df[f"{self.fairness_metric_name}_regularized"] - df["regularization_fairness"]
+            df[f"{self.fairness_metric_name}_regularized"]
+            - df["regularization_fairness"]
         )
 
         # Remove possible multipliers duplicates
         df = df.drop_duplicates(self._multiplier_names_)
 
         # Filter pareto front solutions
-        if self.fairness_metric_name in _valid_regression_metrics and self._third_objective:
+        if (
+            self.fairness_metric_name in _valid_regression_metrics
+            and self._third_objective
+        ):
             pareto_columns = [
                 self.accuracy_metric_name,
                 self.fairness_metric_name,
@@ -1086,7 +1164,9 @@ class ModelBiasMitigator:
             [col for col in df.columns if self._should_drop_column(col)],
             axis=1,
         )
-        self.tradeoff_summary_ = self.tradeoff_summary_[self.tradeoff_summary_.columns[::-1]]
+        self.tradeoff_summary_ = self.tradeoff_summary_[
+            self.tradeoff_summary_.columns[::-1]
+        ]
 
     def _should_drop_column(self, column: str) -> bool:
         """Determines if the specified column should be dropped from
@@ -1120,11 +1200,16 @@ class ModelBiasMitigator:
         def _get_optimization_direction(higher_is_better: Union[bool, str]):
             return "maximize" if higher_is_better else "minimize"
 
-        if self.fairness_metric_name in _valid_regression_metrics and self._third_objective:
+        if (
+            self.fairness_metric_name in _valid_regression_metrics
+            and self._third_objective
+        ):
             return [
                 _get_optimization_direction(self._higher_accuracy_is_better),
                 _get_optimization_direction(self._higher_fairness_is_better),
-                _get_optimization_direction(True),  # higher outcome regression is better
+                _get_optimization_direction(
+                    True
+                ),  # higher outcome regression is better
             ]
         else:
             return [
@@ -1188,7 +1273,9 @@ class ModelBiasMitigator:
             if constrained_higher_is_better:
                 ref_val = self._best_trials_detailed[self.constrained_metric_].max()
                 relative_ratio = (
-                    (1 - self._constraint_value) if ref_val > 0 else (1 + self._constraint_value)
+                    (1 - self._constraint_value)
+                    if ref_val > 0
+                    else (1 + self._constraint_value)
                 )
                 self.constraint_criterion_value_ = relative_ratio * ref_val
                 self._admissible_trials_mask_ = (
@@ -1198,7 +1285,9 @@ class ModelBiasMitigator:
             else:
                 ref_val = self._best_trials_detailed[self.constrained_metric_].min()
                 relative_ratio = (
-                    (1 + self._constraint_value) if ref_val > 0 else (1 - self._constraint_value)
+                    (1 + self._constraint_value)
+                    if ref_val > 0
+                    else (1 - self._constraint_value)
                 )
                 self.constraint_criterion_value_ = relative_ratio * ref_val
                 self._admissible_trials_mask_ = (
@@ -1302,7 +1391,8 @@ class ModelBiasMitigator:
             marker = dict(
                 color=df[self._third_objective_name],
                 symbol=[
-                    "star" if val == 0.0 else "circle" for val in df[self._third_objective_name]
+                    "star" if val == 0.0 else "circle"
+                    for val in df[self._third_objective_name]
                 ],
                 colorscale="bluered",
                 colorbar=dict(title="Levelling Down"),
@@ -1485,7 +1575,10 @@ class ModelBiasMitigator:
         # ----- Multipliers that re-create the original model -----
         # good accuracy, bad disparity, good regression
         default_multipliers.append(
-            {f"multiplier_{group_name}": 1.0 for group_name in self._unique_group_names_}
+            {
+                f"multiplier_{group_name}": 1.0
+                for group_name in self._unique_group_names_
+            }
         )
 
         # Unless we calculate a better bound below, assume that multipliers should
@@ -1512,7 +1605,9 @@ class ModelBiasMitigator:
                 # Fit the EO method as implemented in fairlearn
                 adjusted_model = ThresholdOptimizer(
                     estimator=self._base_estimator,
-                    constraints=_automl_to_fairlearn_metric_names[self.fairness_metric_name],
+                    constraints=_automl_to_fairlearn_metric_names[
+                        self.fairness_metric_name
+                    ],
                     objective=(
                         "accuracy_score"
                         if self.accuracy_metric_name == "accuracy"
@@ -1523,7 +1618,9 @@ class ModelBiasMitigator:
                 adjusted_model.fit(X, y, sensitive_features=groups)
 
                 # Estimate the target rate value for the given rate
-                adjusted_predictions = adjusted_model.predict(X, sensitive_features=groups)
+                adjusted_predictions = adjusted_model.predict(
+                    X, sensitive_features=groups
+                )
                 target_rate = rate_scorer(y, adjusted_predictions)
 
                 # Find multipliers that produce the corresponding target rate as closely as possible for each group
@@ -1562,7 +1659,9 @@ class ModelBiasMitigator:
 
             default_multipliers.append(multipliers_or)
 
-            max_multiplier = max([m if m > 1 else 1 / m for m in multipliers_or.values()])
+            max_multiplier = max(
+                [m if m > 1 else 1 / m for m in multipliers_or.values()]
+            )
 
         # Allow to increase/decrease probabilities by a factor of at most 10,
         # unless larger is required to allow the trivial solution above.
@@ -1599,14 +1698,17 @@ class ModelBiasMitigator:
             rates = [
                 rate_scorer(
                     y[mask],
-                    self._probas_predicted[mask][:, self._favorable_label_idx] > threshold,
+                    self._probas_predicted[mask][:, self._favorable_label_idx]
+                    > threshold,
                 )
                 for threshold in thresholds
             ]
 
             # Find threshold with closest rate to target rate, break ties towards
             # thresholds of 0.5 -- i.e., doing nothing
-            ideal_index = np.argmin((rates - target_rate) ** 2 + np.abs(thresholds - 0.5) * 10**-5)
+            ideal_index = np.argmin(
+                (rates - target_rate) ** 2 + np.abs(thresholds - 0.5) * 10**-5
+            )
             ideal_threshold = thresholds[ideal_index]
 
             # Closed form solution to convert thresholds to multipliers
