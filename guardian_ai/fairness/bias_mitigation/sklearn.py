@@ -36,7 +36,6 @@ from guardian_ai.fairness.metrics.utils import (
     _inhouse_metrics,
 )
 
-from fairlearn.postprocessing import ThresholdOptimizer
 
 if TYPE_CHECKING:
     import numpy as np
@@ -47,6 +46,7 @@ if TYPE_CHECKING:
     from category_encoders.ordinal import OrdinalEncoder
     from sklearn.base import BaseEstimator
     from sklearn.model_selection import StratifiedShuffleSplit
+    from fairlearn.postprocessing import ThresholdOptimizer
 else:
     np = LazyLoader("numpy")
     pd = LazyLoader("pandas")
@@ -58,6 +58,7 @@ else:
         "sklearn.model_selection", "StratifiedShuffleSplit"
     )
     OrdinalEncoder = LazyLoader("category_encoders.ordinal", "OrdinalEncoder")
+    ThresholdOptimizer = LazyLoader("fairlearn.postprocessing", "ThresholdOptimizer")
 
 
 @dyn_docstring(

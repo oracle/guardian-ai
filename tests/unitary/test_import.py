@@ -9,8 +9,6 @@ from guardian_ai import *
 
 def test_import():
     import guardian_ai
-
-    from guardian_ai import fairness
-    from guardian_ai import privacy_estimation
+    from guardian_ai import fairness, privacy_estimation
 
     assert True

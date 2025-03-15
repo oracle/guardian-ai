@@ -9,10 +9,10 @@ from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 
 from guardian_ai.privacy_estimation.attack import (
+    AttackType,
     BlackBoxAttack,
     LossBasedBlackBoxAttack,
     ThresholdClassifier,
-    AttackType,
 )
 from guardian_ai.privacy_estimation.merlin_attack import MerlinAttack
 from guardian_ai.privacy_estimation.model import TargetModel
@@ -137,9 +137,7 @@ class MorganAttack(BlackBoxAttack):
         """
         self.loss_attack = loss_attack
         self.merlin_attack = merlin_attack
-        super(MorganAttack, self).__init__(
-            attack_model, name=AttackType.MorganAttack.name
-        )
+        super(MorganAttack, self).__init__(attack_model, name=AttackType.MorganAttack.name)
 
     def transform_attack_data(
         self,
@@ -189,8 +187,6 @@ class MorganAttack(BlackBoxAttack):
             labels = target_model.model.classes_
             pred_y = target_model.get_prediction_probs(X_attack)
             my_per_instance_loss = -log_loss_vector(y_attack, pred_y, labels=labels)
-            merlin_ratio = self.merlin_attack.get_merlin_ratio(
-                target_model, X_attack, y_attack
-            )
+            merlin_ratio = self.merlin_attack.get_merlin_ratio(target_model, X_attack, y_attack)
         X_membership = np.column_stack((my_per_instance_loss, merlin_ratio))
         return X_membership

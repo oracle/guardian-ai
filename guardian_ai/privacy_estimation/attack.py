@@ -4,15 +4,15 @@
 # Copyright (c) 2023, 2024 Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
-from abc import abstractmethod
 import enum
+from abc import abstractmethod
+from typing import List
 
 import numpy as np
 import sklearn.metrics
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import classification_report, get_scorer, roc_curve
 from sklearn.utils.validation import check_is_fitted
-from typing import List
 
 from guardian_ai.privacy_estimation.attack_tuner import AttackTuner
 from guardian_ai.privacy_estimation.model import TargetModel
@@ -193,7 +193,9 @@ class BlackBoxAttack:
         """
         self.name = name
         self.attack_model = attack_model
-        self.X_membership_train = None  # Useful for caching the feature values for the attack (e.g. Morgan attack)
+        self.X_membership_train = (
+            None  # Useful for caching the feature values for the attack (e.g. Morgan attack)
+        )
         self.X_membership_test = None
 
     @abstractmethod
@@ -304,9 +306,7 @@ class BlackBoxAttack:
             )
             self.attack_model.threshold = best_params["threshold"]
         else:
-            self.attack_model = self.attack_model.fit(
-                X_membership_train, y_membership_train
-            )
+            self.attack_model = self.attack_model.fit(X_membership_train, y_membership_train)
 
     def perform_attack(self, target_model: TargetModel, X_attack, y_attack):
         """
@@ -407,9 +407,7 @@ class BlackBoxAttack:
 
         if print_roc_curve and not isinstance(self.attack_model, ThresholdClassifier):
             predictions_prob = self.attack_model.predict_proba(X_membership_test)
-            fpr, tpr, thresholds = roc_curve(
-                y_membership_test, predictions_prob[:, 1], pos_label=1
-            )
+            fpr, tpr, thresholds = roc_curve(y_membership_test, predictions_prob[:, 1], pos_label=1)
             print(fpr)
             print(tpr)
             print(thresholds)
@@ -485,9 +483,7 @@ class LossBasedBlackBoxAttack(BlackBoxAttack):
         """
         labels = target_model.model.classes_
         probs = target_model.get_prediction_probs(X_attack)
-        X_membership = -log_loss_vector(
-            y_attack, probs, labels=labels
-        )  # lower is better
+        X_membership = -log_loss_vector(y_attack, probs, labels=labels)  # lower is better
         return X_membership
 
 
@@ -548,9 +544,7 @@ class ExpectedLossBasedBlackBoxAttack(BlackBoxAttack):
         """
         labels = target_model.model.classes_
         probs = target_model.get_prediction_probs(X_attack)
-        X_membership = -log_loss_vector(
-            y_attack, probs, labels=labels
-        )  # lower is better
+        X_membership = -log_loss_vector(y_attack, probs, labels=labels)  # lower is better
         # Note that this is the main difference.
         # We're using the right shape to be used with a classifier with a single feature
         return np.column_stack((X_membership, np.zeros((X_membership.shape[0], 1))))
