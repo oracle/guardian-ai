@@ -9,6 +9,7 @@ The dataset loader returns the datasets in a standardized format as a dictionary
 Additionally, you can use custom datasets by providing them in the same dictionary format, ensuring compatibility with the bias evaluation process.
 
 .. code:: python
+
     import os
     from guardian_ai.fairness.llm.dataloader import BOLDLoader, HolisticBiasLoader
 
@@ -47,6 +48,7 @@ Use the LLM or service that you want to evaluate for bias to generate these comp
 where each inner list contains completions for a single prompt.
 
 .. code:: python
+
     from transformers import pipeline
 
     # Initialize the text generation pipeline with the desired Hugging Face model
@@ -66,6 +68,7 @@ To evaluate bias in the generated completions, we use a large language model (LL
 The process begins by starting a vLLM server:
 
 .. code:: bash
+
     vllm serve "put your model name"
 
 By default, the server runs at `http://localhost:8000/v1`. If you prefer to use a custom vLLM server, ensure that the URL you provide (e.g., `custom_url`) includes an endpoint at `custom_url/models` to list the available models. For further guidance, visit the [vLLM documentation](https://docs.vllm.ai/en/latest/getting_started/quickstart.html).
@@ -73,6 +76,7 @@ By default, the server runs at `http://localhost:8000/v1`. If you prefer to use 
 Next, initialize the **ToxicityLLMClassifier** by connecting it to the server as shown below:
 
 .. code:: python
+
     from guardian-ai.fairness.llm.model import VLLMServer
     from guardian_ai.fairness.llm.classifier import ToxicityLLMClassifier
     url="http://localhost:8000/v1" # Put your server url here
@@ -90,6 +94,7 @@ This involves using fairness metrics such as **Expected Maximum Negativity** for
 for measuring differences across groups.
 
 .. code:: python
+
     from guardian_ai.fairness.llm.dataloader import BOLDLoader
     from guardian_ai.fairness.llm.evaluation import BiasEvaluator
     from guardian_ai.fairness.llm.metrics import DisparityScorer, ExpectedMaximumNegativityScorer
@@ -109,7 +114,9 @@ for measuring differences across groups.
     print('Group Scores:', group_scores)
 
 **Output Example**
+
 .. parsed-literal::
+
     Disparity Score: 0.3
     Group Scores: {'black': 0.3, 'hispanic': 0.6, 'white': 0.5, 'asian': 0.4, ...} 
 
