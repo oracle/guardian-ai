@@ -8,7 +8,7 @@ import numpy as np
 import scipy.sparse as sp
 from sklearn.base import BaseEstimator
 
-from guardian_ai.privacy_estimation.attack import BlackBoxAttack, AttackType
+from guardian_ai.privacy_estimation.attack import AttackType, BlackBoxAttack
 from guardian_ai.privacy_estimation.model import TargetModel
 from guardian_ai.privacy_estimation.utils import log_loss_vector
 
@@ -54,9 +54,7 @@ class MerlinAttack(BlackBoxAttack):
         self.noise_coverage = noise_coverage
         self.noise_magnitude = noise_magnitude
         self.max_t = max_t
-        super(MerlinAttack, self).__init__(
-            attack_model, name=AttackType.MerlinAttack.name
-        )
+        super(MerlinAttack, self).__init__(attack_model, name=AttackType.MerlinAttack.name)
 
     def generate_noise(self, shape: np.shape, dtype):
         """
@@ -82,9 +80,7 @@ class MerlinAttack(BlackBoxAttack):
                     np.random.uniform(0, self.noise_magnitude, size=shape), dtype=dtype
                 )
             else:
-                noise = np.array(
-                    np.random.normal(0, self.noise_magnitude, size=shape), dtype=dtype
-                )
+                noise = np.array(np.random.normal(0, self.noise_magnitude, size=shape), dtype=dtype)
         else:
             attr = np.random.randint(shape[1])
             if self.noise_type == "uniform":
@@ -131,9 +127,7 @@ class MerlinAttack(BlackBoxAttack):
                 noise = sp.csr_matrix(noise)
             noisy_x = X_attack + noise
             predictions = target_model.get_prediction_probs(noisy_x)
-            my_noisy_per_instance_loss = log_loss_vector(
-                y_attack, predictions, labels=labels
-            )
+            my_noisy_per_instance_loss = log_loss_vector(y_attack, predictions, labels=labels)
             counts += np.where(my_noisy_per_instance_loss > my_per_instance_loss, 1, 0)
         return counts / self.max_t
 

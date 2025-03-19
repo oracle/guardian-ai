@@ -8,10 +8,10 @@ import numpy as np
 from sklearn.base import BaseEstimator
 
 from guardian_ai.privacy_estimation.attack import (
+    AttackType,
     BlackBoxAttack,
     ConfidenceBasedBlackBoxAttack,
     LossBasedBlackBoxAttack,
-    AttackType,
 )
 from guardian_ai.privacy_estimation.merlin_attack import MerlinAttack
 from guardian_ai.privacy_estimation.model import TargetModel
@@ -173,10 +173,6 @@ class CombinedWithMerlinBlackBoxAttack(BlackBoxAttack):
             probs = target_model.get_prediction_probs(X_attack)
             my_per_instance_loss = -log_loss_vector(y_attack, probs, labels=labels)
             my_confidence = np.max(probs, 1)
-            merlin_ratio = self.merlin_attack.get_merlin_ratio(
-                target_model, X_attack, y_attack
-            )
-        X_membership = np.column_stack(
-            (my_per_instance_loss, my_confidence, merlin_ratio)
-        )
+            merlin_ratio = self.merlin_attack.get_merlin_ratio(target_model, X_attack, y_attack)
+        X_membership = np.column_stack((my_per_instance_loss, my_confidence, merlin_ratio))
         return X_membership
