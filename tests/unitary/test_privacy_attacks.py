@@ -148,6 +148,44 @@ def test_prepare_target_and_attack_data(dataset, dataset_split_ratios):
     assert attack_model_data.X_attack_test.get_shape() == (199, 30)
 
 
+def test_prepare_attack_splits_for_pretrained(dataset, dataset_split_ratios):
+    # Split dataset's data into in and out samples
+    df_x_in = dataset.df_x.iloc[:250]
+    df_y_in = dataset.df_y.iloc[:250]
+    df_x_out = dataset.df_x.iloc[250:]
+    df_y_out = dataset.df_y.iloc[250:]
+
+    # Define dataset split ratios
+    dataset_split_ratios_for_pretrained_model = {
+        DataSplit.ATTACK_TRAIN_IN: 0.6,  #150
+        DataSplit.ATTACK_TEST_IN: 0.4,  #100
+        DataSplit.ATTACK_TRAIN_OUT: 0.5,  #125
+        DataSplit.ATTACK_TEST_OUT: 0.5,  #125
+    }
+
+    # Call the method to prepare attack splits for a pretrained model
+    dataset.prepare_attack_data_for_pretrained_model(
+        data_split_seed=42,
+        dataset_split_ratios=dataset_split_ratios_for_pretrained_model,
+        df_x_in=df_x_in,
+        df_y_in=df_y_in,
+        df_x_out=df_x_out,
+        df_y_out=df_y_out
+    )
+
+    # Check required attack splits exist
+    assert DataSplit.ATTACK_TRAIN_IN.name in dataset.splits
+    assert DataSplit.ATTACK_TEST_IN.name in dataset.splits
+    assert DataSplit.ATTACK_TRAIN_OUT.name in dataset.splits
+    assert DataSplit.ATTACK_TEST_OUT.name in dataset.splits
+
+    # Verify attack model data is initialized and has correct sizes
+    attack_model_data = dataset.attack_model_data
+    assert attack_model_data is not None
+    assert attack_model_data.X_attack_train.shape[0] == 275  # 150 (in) + 125 (out)
+    assert attack_model_data.X_attack_test.shape[0] == 225  # 100 (in) + 125 (out)
+
+
 @pytest.mark.skip(reason="random state was not added while creating unit testing")
 def test_run_attack(attack_runner, metric_functions):
     cache_input = (

@@ -290,3 +290,113 @@ by the given metric and print out the best attacks for each dataset for each mod
         graphs_dir=graph_dir,
         metric_to_sort_on="attack_accuracy",
     )
+
+
+
+
+
+
+************************************
+Evaluating Externally Trained Models
+************************************
+
+This section outlines how to assess the privacy risk of a model trained outside the Guardian AI framework
+
+
+Step 1: Load Your Data
+----------------------
+
+Load the data used to train your model and a similar dataset not used in training ( CSV files, Dataframes )
+
+.. code-block:: python
+
+    df_x_in = pd.read_csv("in_data.csv")  # Features from training data
+    df_y_in = pd.read_csv("in_labels.csv", header=None).squeeze()  # Labels from training data
+    df_x_out = pd.read_csv("out_data.csv")  # Features from non-training data
+    df_y_out = pd.read_csv("out_labels.csv", header=None).squeeze()  # Labels from non-training data
+
+
+Step 2: Prepare Attack Splits
+-----------------------------
+
+Use the ``prepare_attack_data_for_pretrained_model`` method to create attack-specific data splits:
+
+.. code-block:: python
+
+    from guardian_ai.privacy_estimation.dataset import ClassificationDataset, DataSplit
+
+    dataset = ClassificationDataset("your_dataset_name")
+    dataset.prepare_attack_data_for_pretrained_model(
+        data_split_seed=42,
+        dataset_split_ratios={
+            DataSplit.ATTACK_TRAIN_IN: 0.3,
+            DataSplit.ATTACK_TEST_IN: 0.7,
+            DataSplit.ATTACK_TRAIN_OUT: 0.3,
+            DataSplit.ATTACK_TEST_OUT: 0.7,
+        },
+        df_x_in=df_x_in,
+        df_y_in=df_y_in,
+        df_x_out=df_x_out,
+        df_y_out=df_y_out
+    )
+
+
+Step 3: Wrap Your Model
+-----------------------
+
+Wrap your pretrained model to make it compatible with the framework:
+
+.. code-block:: python
+
+    from guardian_ai.privacy_estimation.model import TargetModel
+
+    class ExternalTargetModel(TargetModel):
+        """
+        Wrapper for external pretrained models.
+        """
+        def __init__(self, model):
+            self.model = model
+
+        def get_model(self):
+            return self.model
+
+        def get_model_name(self):
+            return "external_model"
+
+        def get_prediction_probs(self, X):
+            return self.model.predict_proba(X)
+
+
+Step 4: Register Attacks and Run Evaluation
+-------------------------------------------
+
+Instantiate the attack runner and execute the evaluation:
+
+.. code-block:: python
+
+    # Initialize attack runner
+    attack_runner = AttackRunner(
+        dataset=dataset,
+        target_models=[ExternalTargetModel(your_external_model)],
+        attacks=[
+            AttackType.LossBasedBlackBoxAttack,
+            AttackType.ConfidenceBasedBlackBoxAttack,
+            AttackType.MerlinAttack
+        ],
+        threshold_grids={AttackType.MerlinAttack.name: [0.001, 0.01, 0.1]}
+    )
+
+    results = attack_runner.run_attack(
+        target_model=ExternalTargetModel(your_external_model),
+        attack_type=AttackType.MerlinAttack,
+        metric_functions=["precision", "recall", "f1", "accuracy"],
+        cache_input=True
+    )
+
+
+Notes:
+------
+
+1.	Data Preprocessing: Ensure ``df_x_in`` and ``df_x_out`` are preprocessed identically to how they were during the model's training
+2.	Split Ratios: The sum of ``ATTACK_TRAIN_IN`` + ``ATTACK_TEST_IN`` and ``ATTACK_TRAIN_OUT`` + ``ATTACK_TEST_OUT`` must equal ``1.0``
+3.	Model Compatibility: The external model must support a ``predict_proba`` method

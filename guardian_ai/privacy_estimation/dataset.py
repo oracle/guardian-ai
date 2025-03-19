@@ -169,7 +169,12 @@ class Dataset:
         self.splits = {}
 
     def split_dataset(
-        self, seed: int, split_array: List[float], split_names: List[str] = None
+        self,
+        seed: int,
+        split_array: List[float],
+        split_names: List[str] = None,
+        df_x: pd.DataFrame = None,
+        df_y: pd.Series = None
     ):
         """
         Splits dataset according to the specified fractions.
@@ -182,6 +187,10 @@ class Dataset:
             Array of fractions to split the data in. Must sum to 1.
         split_names: List[str]
             Names assigned to the splits.
+        df_x: pd.DataFrame, optional
+            If provided, use this instead of self.df_x
+        df_y: pd.Series, optional
+            If provided, use this instead of self.df_y
 
         Returns
         -------
@@ -195,8 +204,8 @@ class Dataset:
             assert len(split_array) == len(split_names)
 
         x_2, y_2 = (
-            self.df_x,
-            self.df_y,
+            df_x if df_x is not None else self.df_x,
+            df_y if df_y is not None else self.df_y,
         )  # using these variables as portion to be split next
         test_size = np.sum(split_array[1:])
         for i in range(len(split_array)):
@@ -703,4 +712,98 @@ class ClassificationDataset(Dataset):
             X_attack_test,
             y_attack_test,
             y_membership_test,
+        )
+
+    def prepare_attack_data_for_pretrained_model(
+            self,
+            data_split_seed: int,
+            dataset_split_ratios: Dict[DataSplit, float],
+            df_x_in: pd.DataFrame,
+            df_y_in: pd.Series,
+            df_x_out: pd.DataFrame,
+            df_y_out: pd.Series
+    ) -> None:
+        """
+        Prepares attack splits for pretrained models using external data sources.
+
+        Parameters
+        ----------
+        data_split_seed : int
+            Random seed for reproducibility
+        dataset_split_ratios : Dict[DataSplit, float]
+            Ratios for splitting in/out data into attack sets
+        df_x_in : pd.DataFrame
+            Features from the model's training data
+        df_y_in : pd.Series
+            Labels from the model's training data
+        df_x_out : pd.DataFrame
+            Features from non-training data
+        df_y_out : pd.Series
+            Labels from non-training data
+
+        Returns
+        -------
+        None
+
+        """
+        assert abs(dataset_split_ratios[DataSplit.ATTACK_TRAIN_IN] +
+                   dataset_split_ratios[DataSplit.ATTACK_TEST_IN] - 1.0) < 1e-6, \
+            "In-data ratios must sum to 1.0"
+
+        assert abs(dataset_split_ratios[DataSplit.ATTACK_TRAIN_OUT] +
+                   dataset_split_ratios[DataSplit.ATTACK_TEST_OUT] - 1.0) < 1e-6, \
+            "Out-data ratios must sum to 1.0"
+
+
+        # Split in-data (model's training data)
+        in_dataset = ClassificationDataset(name="in_data")
+        in_dataset.load_data_from_df(df_x_in, df_y_in)
+        in_dataset.split_dataset(
+            seed=data_split_seed,
+            split_array=[
+                dataset_split_ratios[DataSplit.ATTACK_TRAIN_IN],
+                dataset_split_ratios[DataSplit.ATTACK_TEST_IN]
+            ],
+            split_names=[
+                DataSplit.ATTACK_TRAIN_IN.name,
+                DataSplit.ATTACK_TEST_IN.name
+            ]
+        )
+
+        # Split out-data (non-training data)
+        out_dataset = ClassificationDataset(name="out_data")
+        out_dataset.load_data_from_df(df_x_out, df_y_out)
+        out_dataset.split_dataset(
+            seed=data_split_seed,
+            split_array=[
+                dataset_split_ratios[DataSplit.ATTACK_TRAIN_OUT],
+                dataset_split_ratios[DataSplit.ATTACK_TEST_OUT]
+            ],
+            split_names=[
+                DataSplit.ATTACK_TRAIN_OUT.name,
+                DataSplit.ATTACK_TEST_OUT.name
+            ]
+        )
+
+        # Merge splits into main dataset
+        self.splits.update(in_dataset.splits)
+        self.splits.update(out_dataset.splits)
+
+        X_attack_train, y_attack_train, y_membership_train = self.create_attack_set_from_splits(
+            DataSplit.ATTACK_TRAIN_IN.name,
+            DataSplit.ATTACK_TRAIN_OUT.name
+        )
+
+        X_attack_test, y_attack_test, y_membership_test = self.create_attack_set_from_splits(
+            DataSplit.ATTACK_TEST_IN.name,
+            DataSplit.ATTACK_TEST_OUT.name
+        )
+
+        self.attack_model_data = AttackModelData(
+            X_attack_train=X_attack_train,
+            y_attack_train=y_attack_train,
+            y_membership_train=y_membership_train,
+            X_attack_test=X_attack_test,
+            y_attack_test=y_attack_test,
+            y_membership_test=y_membership_test
         )

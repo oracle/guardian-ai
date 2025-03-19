@@ -58,7 +58,6 @@ class AttackRunner:
         AttackRunner
         """
         self.dataset = dataset
-        assert self.dataset.target_model_data is not None
         assert self.dataset.attack_model_data is not None
         self.target_models = target_models
         self.attacks = attacks
@@ -68,6 +67,7 @@ class AttackRunner:
 
     def train_target_models(self):
         for target_model in self.target_models:
+            assert self.dataset.target_model_data is not None
             print("Target Model: " + target_model.get_model_name())
             target_model_data: TargetModelData = self.dataset.target_model_data
             classifier = target_model.train_model(
