@@ -4,6 +4,15 @@
 Release Notes
 ==============
 
+1.3.0
+-----
+
+Release date: March 17, 2025
+
+**New Features and Enhancements:**
+
+* Added new support for LLMs in the fairness module for measuring toxicity bias in LLMs. These metrics measure the disparity in toxic generations -- that is, whether or not your LLM is more toxic when talking about one group of people than another. 
+
 1.2.0
 -----
 
