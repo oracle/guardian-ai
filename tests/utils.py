@@ -8,6 +8,7 @@
 import datetime
 import numbers
 import random
+
 import numpy as np
 import pandas as pd
 import pytz
@@ -105,16 +106,10 @@ def get_dummy_dataset(
     ]
 
     # sanity checks
-    assert (
-        n_samples >= n_classes
-    ), "Number of samples has to be greater than num of classes"
-    assert (imb_factor > 0) and (
-        imb_factor <= 1.0
-    ), "imb_factor has to be in range of (0, 1.0]"
+    assert n_samples >= n_classes, "Number of samples has to be greater than num of classes"
+    assert (imb_factor > 0) and (imb_factor <= 1.0), "imb_factor has to be in range of (0, 1.0]"
     assert len(types) == len(set(types)), "types inside the list must be unique"
-    assert len(dtime_types) == len(
-        set(dtime_types)
-    ), "dtime_types inside the list must be unique"
+    assert len(dtime_types) == len(set(dtime_types)), "dtime_types inside the list must be unique"
     assert (
         len(dtime_types) + len(types) <= n_features
     ), "provided number of feature types is more than n_features"
@@ -137,16 +132,12 @@ def get_dummy_dataset(
     if task == "classification" or task == "anomaly_detection":
         # assign class counts based on geometric distribution of classes based on imb_factor
         class_weights = np.geomspace(imb_factor, 1.0, num=n_classes)
-        class_counts = [
-            max(1, int(n_samples * x / np.sum(class_weights))) for x in class_weights
-        ]
+        class_counts = [max(1, int(n_samples * x / np.sum(class_weights))) for x in class_weights]
         class_excess = np.sum(class_counts) - n_samples
         class_counts[-1] -= class_excess
 
         # create labels based on class counts and shuffle them
-        y = np.hstack(
-            [np.full((1, count), cl) for cl, count in enumerate(class_counts)]
-        ).ravel()
+        y = np.hstack([np.full((1, count), cl) for cl, count in enumerate(class_counts)]).ravel()
         np.random.shuffle(y.astype(int))
         y = y.tolist()
     elif task == "regression":
@@ -161,9 +152,7 @@ def get_dummy_dataset(
         feat_col_types = np.random.choice(
             range(0, total_feat_types), size=n_features - total_feat_types
         ).tolist()
-        feat_col_types += list(
-            range(0, total_feat_types)
-        )  # to ensure at least one of each type
+        feat_col_types += list(range(0, total_feat_types))  # to ensure at least one of each type
 
     else:
         feat_col_types = []
@@ -209,9 +198,7 @@ def get_dummy_dataset(
                 feat = n_samples * [datetime.date(2019, 9, 11)]
             elif typ == "datetimez":
                 special_cols_num.append(i)
-                special_pd_df.append(
-                    pd.date_range(start=0, periods=n_samples, tz="UTC")
-                )
+                special_pd_df.append(pd.date_range(start=0, periods=n_samples, tz="UTC"))
                 feat = n_samples * [
                     datetime.date(2019, 9, 11)
                 ]  # needs to be handled in special way b/c it's already pandas obj
@@ -252,9 +239,7 @@ def get_dummy_dataset(
 
     # Add target column and convert all types to pandas dtypes
     features.append(y)
-    col_types.append(
-        "int" if task == "classification" else "float"
-    )  # target column type is int
+    col_types.append("int" if task == "classification" else "float")  # target column type is int
     pd_col_types = map_col_types(col_types)
     pd_df = pd.DataFrame(features).T  # transpose to get samples x features
     num_feats = len(features) - 1
@@ -270,9 +255,7 @@ def get_dummy_dataset(
     # assign datatypes to pd dataframe for non-datetime types
     columns_types_all = list(zip(columns, pd_col_types))
     columns_types_nodtime = [
-        (name, typ)
-        for (name, typ) in columns_types_all
-        if typ not in allowed_dtime_types
+        (name, typ) for (name, typ) in columns_types_all if typ not in allowed_dtime_types
     ]
     columns_types_dtime = [
         (name, typ) for (name, typ) in columns_types_all if typ in allowed_dtime_types
@@ -290,9 +273,7 @@ def get_dummy_dataset(
             if contain_null:
                 pd_df[col] = generate_null(pd_df[col], null_ratio)
             if tz_aware:
-                tz[str(col)] = pytz.all_timezones[
-                    np.random.randint(len(pytz.all_timezones))
-                ]
+                tz[str(col)] = pytz.all_timezones[np.random.randint(len(pytz.all_timezones))]
         else:
             pd_df[col] = pd.to_timedelta(pd_df[col], errors="coerce")
 

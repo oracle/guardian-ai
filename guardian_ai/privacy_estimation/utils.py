@@ -69,10 +69,7 @@ def log_loss_vector(y_true, y_pred, labels=None):
     loss_vector = []
     for i, sample in enumerate(y_true):
         sample_loss = np.sum(
-            [
-                -int(j == spos_dict[sample]) * np.log(y_pred[i][j])
-                for j in range(len(labels))
-            ]
+            [-int(j == spos_dict[sample]) * np.log(y_pred[i][j]) for j in range(len(labels))]
         )
         loss_vector.append(sample_loss)
 

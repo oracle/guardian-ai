@@ -27,9 +27,7 @@ def _get_partitions():
     if __PARTITIONS__ is None:
         __PARTITIONS__ = {}
         req_files = glob.glob(
-            os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "../requirements-*"
-            ),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "../requirements-*"),
             recursive=True,
         )
         for file in req_files:
@@ -176,9 +174,7 @@ class LazyLoader:
         """
         self.__load_module()
         if self.callable_name is None:
-            raise GuardianAIRuntimeError(
-                "Cannot call a lazy loader when no callable is specified."
-            )
+            raise GuardianAIRuntimeError("Cannot call a lazy loader when no callable is specified.")
         return self._mod(*args, **kwargs)
 
     @classmethod

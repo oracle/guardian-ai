@@ -5,9 +5,10 @@
 # Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
 
 
-import pandas as pd
 import os
+
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 class ResultPlot:
@@ -42,9 +43,7 @@ class ResultPlot:
 
         df = pd.read_csv(result_filename, sep="\t")
 
-        rows_with_max = df.loc[
-            df.groupby(["dataset", "target_model"])[metric_to_sort_on].idxmax()
-        ]
+        rows_with_max = df.loc[df.groupby(["dataset", "target_model"])[metric_to_sort_on].idxmax()]
         selected_cols = [
             "target_model",
             "train_f1",
@@ -99,7 +98,5 @@ class ResultPlot:
         plt.axis("off")
         plt.title(dataset_name)
 
-        plt.savefig(
-            os.path.join(graphs_dir, str(dataset_name) + ".png"), bbox_inches="tight"
-        )
+        plt.savefig(os.path.join(graphs_dir, str(dataset_name) + ".png"), bbox_inches="tight")
         plt.clf()
