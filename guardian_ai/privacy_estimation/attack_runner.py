@@ -284,7 +284,11 @@ class AttackRunner:
             print_roc_curve=print_roc_curve,
             cache_input=cache_input,
         )
-
+        # Defensive checks on results
+        if attack_metrics is None or len(attack_metrics) == 0:
+            print(f"Warning: {attack.name} returned no metrics. Skipping result string.")
+            return f"{attack.name}\tNO_METRICS\n"
+        
         # Prepare the result string
         result_str = attack.name
         for i in range(len(attack_metrics)):
